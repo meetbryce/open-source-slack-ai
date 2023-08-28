@@ -1,20 +1,17 @@
 import os
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request
 from slack_bolt import App
-from slack_bolt.adapter.starlette import SlackRequestHandler
-from slack_sdk import WebClient
-from slack_sdk.errors import SlackApiError
-from starlette.requests import Request as StarletteRequest
-from slack_sdk.socket_mode.request import SocketModeRequest
-from slack_sdk.socket_mode.response import SocketModeResponse
-from slack_sdk.socket_mode.aiohttp import SocketModeClient
-from slack_bolt.async_app import AsyncApp
-from slack_bolt.adapter.socket_mode.aiohttp import AsyncSocketModeHandler
 from slack_bolt.adapter.socket_mode import SocketModeHandler
+from slack_bolt.adapter.socket_mode.aiohttp import AsyncSocketModeHandler
+from slack_bolt.adapter.starlette import SlackRequestHandler
+from slack_bolt.async_app import AsyncApp
+from slack_sdk import WebClient
+from starlette.requests import Request as StarletteRequest
 
 from hackathon_2023.summarizer import summarize_slack_messages
+from hackathon_2023.utils import get_channel_history
 
 load_dotenv()
 app = App(token=os.environ["SLACK_BOT_TOKEN"])
@@ -22,6 +19,7 @@ async_app = AsyncApp(token=os.environ["SLACK_BOT_TOKEN"])
 fast_app = FastAPI()
 handler = SlackRequestHandler(app)
 client = WebClient(token=os.environ["SLACK_BOT_TOKEN"])
+socket_handler = AsyncSocketModeHandler(async_app, os.environ["SLACK_APP_TOKEN"])
 
 
 @fast_app.get('/pulse')
@@ -34,8 +32,6 @@ async def handle_direct_message(event, say):
     if event.get("subtype") is None and event.get("channel_type") == "im":
         user_id = event["user"]
         text = event["text"]
-        # Handle the direct message event here
-        # For example, you can send a response using the `say` method
         await say(f"Received direct message from user {user_id}: {text}")
 
 
@@ -48,28 +44,13 @@ async def slack_events(request: Request):
     Returns:
         Response: The result of handling the request.
     """
-    # Convert FastAPI Request to Starlette Request as Slack Bolt expects it
     starlette_request = StarletteRequest(request.scope, request.receive)
     return await handler.handle(starlette_request)
 
 
-async def get_channel_history(channel_id: str) -> list:
-    try:
-        response = client.conversations_history(channel=channel_id, limit=1000)  # 1000 is the max limit
-        # todo: remove TLDR bot messages
-        return response["messages"]
-    except SlackApiError as e:
-        print(f"Error fetching history: {e.response['error']}")
-        return []
-
-
-socket_handler = AsyncSocketModeHandler(async_app, os.environ["SLACK_APP_TOKEN"])
-
-
 @fast_app.on_event("startup")
 async def startup():
-    # this is not ideal for # of workers > 1.
-    await socket_handler.connect_async()
+    await socket_handler.connect_async()  # todo: this is not ideal for # of workers > 1.
 
 
 @fast_app.on_event("shutdown")
@@ -93,12 +74,21 @@ async def handle_slash_command(ack, payload, say):
         await say("ERROR: No channel_id provided.")
         return
 
-    history = await get_channel_history(channel_id)
+    history = await get_channel_history(client, channel_id)
     history.reverse()
     summary = summarize_slack_messages(history)
     summary.insert(0, f'*Summary of #{channel_name}* (last {len(history)} messages)\n')
 
     return await say('\n'.join(summary))
+
+
+@async_app.shortcut("thread")
+async def handle_thread_shortcut(ack, payload, say):
+    await ack()
+    channel_id = payload['channel']['id']
+    # fixme: summarize the thread (let people know if it's not a thread and summarize the message instead)
+    return await say(channel=channel_id, text='Summarized it for you (but not really, lol)')
+    # Rest of your logic here
 
 
 if __name__ == "__main__":
