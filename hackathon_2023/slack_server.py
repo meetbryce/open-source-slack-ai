@@ -1,15 +1,18 @@
 import os
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
 from slack_bolt import App
 from slack_bolt.adapter.starlette import SlackRequestHandler
+from slack_sdk import WebClient
+from slack_sdk.errors import SlackApiError
 from starlette.requests import Request as StarletteRequest
 
 load_dotenv()
 app = App(token=os.environ["SLACK_BOT_TOKEN"])
 fast_app = FastAPI()
 handler = SlackRequestHandler(app)
+client = WebClient(token=os.environ["SLACK_BOT_TOKEN"])
 
 
 @fast_app.get('/pulse')
@@ -41,18 +44,34 @@ async def slack_events(request: Request):
     return await handler.handle(starlette_request)
 
 
+async def get_channel_history(channel_id: str) -> list:
+    try:
+        response = client.conversations_history(channel=channel_id, limit=1000)  # 1000 is the max limit
+        return response["messages"]
+    except SlackApiError as e:
+        print(f"Error fetching history: {e.response['error']}")
+        return []
+
+
 @fast_app.post("/slack/tldr")
 async def handle_slash_command(request: Request):
     form_data = await request.form()
-    text = form_data.get("text", "")  # any text passed with the slash command
-    channel_name = form_data.get("channel_name", "")
+    text = form_data.get("text", None)  # any text passed with the slash command
+    channel_name = form_data.get("channel_name")
+    channel_id = form_data.get("channel_id")
 
     if text:
         return "Sorry, text argument(s) are not support yet."
 
+    if not channel_id:
+        raise HTTPException(status_code=400, detail="No channel_id provided")
+
+    history = await get_channel_history(channel_id)
+
     return {
         "response_type": "in_channel",  # This makes the response visible to all in the channel
-        "text": f'*Summary of #{channel_name}*\n\nY\'all said some stuff :blob-upsidedown:'
+        "text": f'*Summary of #{channel_name}* (last {len(history)} messages)\n\n'
+                f'Y\'all said some stuff :blob-upsidedown:'
     }
 
 
