@@ -86,8 +86,26 @@ async def handle_slash_command(ack, payload, say):
 @async_app.shortcut("thread")
 async def handle_thread_shortcut(ack, payload, say):
     await ack()
-    channel_id = payload['channel']['id']
-    # fixme: summarize the thread (let people know if it's not a thread and summarize the message instead)
+    channel_id = payload['channel']['id'] if payload['channel']['id'] else payload['channel_id']
+    # fixme: (let people know if it's not a thread and summarize the message instead)
+    try:
+        # Fetch the message using the payload's ts (timestamp) and channel ID
+        response = client.conversations_replies(channel=channel_id, ts=payload['message_ts'])
+        # channel_id = 'TODO'  # FIXME: overwriting to the test channel during testing
+        if response['ok']:
+            messages = response['messages']
+            original_message = messages[0]['text']
+            workspace_name = 'tatari'  # todo: don't hardcode the workspace name
+            link = f"https://{workspace_name}.slack.com/archives/{channel_id}/p{payload['message_ts'].replace('.', '')}"
+            original_message += f' ({link})\n'
+            summary = summarize_slack_messages(client, messages)
+            summary.insert(0, original_message)
+            return await say(channel=channel_id, text='\n'.join(summary))
+        else:
+            return await say(channel=channel_id, text="Sorry, couldn't fetch the message and its replies.")
+    except SlackApiError as e:
+        await say(channel=channel_id, text=f"Encountered an error: {e.response['error']}")
+
     return await say(channel=channel_id, text='Summarized it for you (but not really, lol)')
 
 
