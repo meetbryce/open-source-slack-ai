@@ -8,6 +8,11 @@ packages = [{include = "hackathon_2023"}]
 
 [tool.poetry.dependencies]
 python = "^3.9"
+slack-sdk = "^3.21.3"
+slack-bolt = "^1.18.0"
+fastapi = "^0.103.0"
+uvicorn = {extras = ["standard"], version = "^0.23.2"}
+python-multipart = "^0.0.6"
 
 
 [build-system]
