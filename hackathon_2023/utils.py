@@ -1,6 +1,8 @@
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 
+_id_name_cache = {}
+
 
 async def get_channel_history(client: WebClient, channel_id: str) -> list:
     try:
@@ -27,3 +29,37 @@ async def get_bot_id(client) -> str:
     except SlackApiError as e:
         print(f"Error fetching bot ID: {e.response['error']}")
         return 'None'
+
+
+def get_name_from_id(client: WebClient, user_or_bot_id: str) -> str:
+    """
+    Retrieves the name associated with a user ID or bot ID.
+
+    Args:
+        client (WebClient): An instance of the Slack WebClient.
+        user_or_bot_id (str): The user or bot ID.
+
+    Returns:
+        str: The name associated with the ID.
+    """
+    if user_or_bot_id in _id_name_cache:
+        return _id_name_cache[user_or_bot_id]
+
+    try:
+        return user_or_bot_id  # FIXME: disabling while scope is awaiting approval
+        # First, try fetching user info
+        user_response = client.users_info(user=user_or_bot_id)
+        if user_response.get("ok"):
+            _id_name_cache[user_or_bot_id] = user_response["user"]["name"]
+            return user_response["user"]["name"]
+
+        # If user info fails, try fetching bot info
+        bot_response = client.bots_info(bot=user_or_bot_id)
+        if bot_response.get("ok"):
+            _id_name_cache[user_or_bot_id] = bot_response["bot"]["name"]
+            return bot_response["bot"]["name"]
+
+    except SlackApiError as e:
+        print(f"Error fetching name: {e.response['error']}")
+
+    return 'Someone'

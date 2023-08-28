@@ -8,6 +8,7 @@ from slack_bolt.adapter.socket_mode.aiohttp import AsyncSocketModeHandler
 from slack_bolt.adapter.starlette import SlackRequestHandler
 from slack_bolt.async_app import AsyncApp
 from slack_sdk import WebClient
+from slack_sdk.errors import SlackApiError
 from starlette.requests import Request as StarletteRequest
 
 from hackathon_2023.summarizer import summarize_slack_messages
@@ -76,7 +77,7 @@ async def handle_slash_command(ack, payload, say):
 
     history = await get_channel_history(client, channel_id)
     history.reverse()
-    summary = summarize_slack_messages(history)
+    summary = summarize_slack_messages(client, history)
     summary.insert(0, f'*Summary of #{channel_name}* (last {len(history)} messages)\n')
 
     return await say('\n'.join(summary))
@@ -88,7 +89,6 @@ async def handle_thread_shortcut(ack, payload, say):
     channel_id = payload['channel']['id']
     # fixme: summarize the thread (let people know if it's not a thread and summarize the message instead)
     return await say(channel=channel_id, text='Summarized it for you (but not really, lol)')
-    # Rest of your logic here
 
 
 if __name__ == "__main__":

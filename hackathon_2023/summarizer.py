@@ -4,6 +4,8 @@ import re
 
 from dotenv import load_dotenv
 
+from hackathon_2023.utils import get_name_from_id
+
 load_dotenv()
 CHAT_MODEL = str(os.environ.get('CHAT_MODEL') or "gpt-3.5-turbo").strip()
 DEBUG = bool(os.environ.get('DEBUG', False))
@@ -104,7 +106,7 @@ def estimate_openai_chat_token_count(text: str) -> int:
     return sum(map(counter, matches))
 
 
-def split_messages_by_token_count(messages: list[dict]) -> list[list[str]]:
+def split_messages_by_token_count(client, messages: list[dict]) -> list[list[str]]:
     """
     Split a list of strings into sub lists with a maximum token count.
 
@@ -116,7 +118,7 @@ def split_messages_by_token_count(messages: list[dict]) -> list[list[str]]:
     """
     # todo: get the username from `user` (the user id)
     # todo: get the bot name from the bot_id
-    message_texts = [f'{msg.get("user", msg.get("bot_id"))}: {msg["text"]}' for msg in messages]
+    message_texts = [f'{get_name_from_id(client, msg.get("user", msg.get("bot_id")))}: {msg["text"]}' for msg in messages]
 
     body_token_counts = [estimate_openai_chat_token_count(msg) for msg in message_texts]
     result = []
@@ -136,10 +138,10 @@ def split_messages_by_token_count(messages: list[dict]) -> list[list[str]]:
     return result
 
 
-def summarize_slack_messages(messages: list) -> list:
+def summarize_slack_messages(client, messages: list) -> list:
     result_text = []
 
-    for split_messages in split_messages_by_token_count(messages):
+    for split_messages in split_messages_by_token_count(client, messages):
         text = summarize("\n".join(split_messages), LANGUAGE)
         result_text.append(text)
 
