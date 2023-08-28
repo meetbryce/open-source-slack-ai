@@ -13,6 +13,7 @@ slack-bolt = "^1.18.0"
 fastapi = "^0.103.0"
 uvicorn = {extras = ["standard"], version = "^0.23.2"}
 python-multipart = "^0.0.6"
+openai = "^0.27.9"
 
 
 [build-system]

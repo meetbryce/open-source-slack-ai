@@ -8,6 +8,8 @@ from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 from starlette.requests import Request as StarletteRequest
 
+from hackathon_2023.summarizer import summarize_slack_messages
+
 load_dotenv()
 app = App(token=os.environ["SLACK_BOT_TOKEN"])
 fast_app = FastAPI()
@@ -67,11 +69,12 @@ async def handle_slash_command(request: Request):
         raise HTTPException(status_code=400, detail="No channel_id provided")
 
     history = await get_channel_history(channel_id)
+    summary = summarize_slack_messages(history)
+    summary.insert(0, f'*Summary of #{channel_name}* (last {len(history)} messages)\n')
 
     return {
         "response_type": "in_channel",  # This makes the response visible to all in the channel
-        "text": f'*Summary of #{channel_name}* (last {len(history)} messages)\n\n'
-                f'Y\'all said some stuff :blob-upsidedown:'
+        "text": '\n'.join(summary)
     }
 
 
