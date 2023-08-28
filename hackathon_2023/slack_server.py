@@ -7,11 +7,18 @@ from slack_bolt.adapter.starlette import SlackRequestHandler
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 from starlette.requests import Request as StarletteRequest
+from slack_sdk.socket_mode.request import SocketModeRequest
+from slack_sdk.socket_mode.response import SocketModeResponse
+from slack_sdk.socket_mode.aiohttp import SocketModeClient
+from slack_bolt.async_app import AsyncApp
+from slack_bolt.adapter.socket_mode.aiohttp import AsyncSocketModeHandler
+from slack_bolt.adapter.socket_mode import SocketModeHandler
 
 from hackathon_2023.summarizer import summarize_slack_messages
 
 load_dotenv()
 app = App(token=os.environ["SLACK_BOT_TOKEN"])
+async_app = AsyncApp(token=os.environ["SLACK_BOT_TOKEN"])
 fast_app = FastAPI()
 handler = SlackRequestHandler(app)
 client = WebClient(token=os.environ["SLACK_BOT_TOKEN"])
@@ -49,36 +56,55 @@ async def slack_events(request: Request):
 async def get_channel_history(channel_id: str) -> list:
     try:
         response = client.conversations_history(channel=channel_id, limit=1000)  # 1000 is the max limit
+        # todo: remove TLDR bot messages
         return response["messages"]
     except SlackApiError as e:
         print(f"Error fetching history: {e.response['error']}")
         return []
 
 
-@fast_app.post("/slack/tldr")
-async def handle_slash_command(request: Request):
-    form_data = await request.form()
-    text = form_data.get("text", None)  # any text passed with the slash command
-    channel_name = form_data.get("channel_name")
-    channel_id = form_data.get("channel_id")
+socket_handler = AsyncSocketModeHandler(async_app, os.environ["SLACK_APP_TOKEN"])
+
+
+@fast_app.on_event("startup")
+async def startup():
+    # this is not ideal for # of workers > 1.
+    await socket_handler.connect_async()
+
+
+@fast_app.on_event("shutdown")
+async def shutdown_event():
+    await socket_handler.disconnect_async()
+
+
+@async_app.command('/tldr')
+async def handle_slash_command(ack, payload, say):
+    await ack()
+    await say('...')  # this is a hack to get the bot to not show an error message but work fine
+    text = payload.get("text", None)
+    channel_name = payload["channel_name"]
+    channel_id = payload["channel_id"]
 
     if text:
-        return "Sorry, text argument(s) are not support yet."
+        await say("ERROR: Sorry, text argument(s) aren't supported yet.")
+        return
 
     if not channel_id:
-        raise HTTPException(status_code=400, detail="No channel_id provided")
+        await say("ERROR: No channel_id provided.")
+        return
 
     history = await get_channel_history(channel_id)
+    history.reverse()
     summary = summarize_slack_messages(history)
     summary.insert(0, f'*Summary of #{channel_name}* (last {len(history)} messages)\n')
 
-    return {
-        "response_type": "in_channel",  # This makes the response visible to all in the channel
-        "text": '\n'.join(summary)
-    }
+    return await say('\n'.join(summary))
 
 
 if __name__ == "__main__":
     import uvicorn
+
+    socket_mode_handler = SocketModeHandler(app, os.environ["SLACK_APP_TOKEN"])
+    socket_mode_handler.start()
 
     uvicorn.run(fast_app, host="0.0.0.0", port=8000)

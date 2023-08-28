@@ -44,7 +44,9 @@ def summarize(text: str, language: str = LANGUAGE):
                 "\n".join([
                     'You\'re a highly capable summarization expert who provides succinct summaries of Slack chat logs.',
                     'The chat log format consists of one line per message in the format "Speaker: Message".',
-                    "The `\\n` within the message represents a line break."
+                    'The chat log lists the most recent messages first. Place more emphasis on recent messages.',
+                    "The `\\n` within the message represents a line break.",
+                    'Consider your summary as a whole and avoid repeating yourself unnecessarily.',
                     f'The user understands {language} only.',
                     f'So, The assistant needs to speak in {language}.',
                 ])
@@ -53,7 +55,7 @@ def summarize(text: str, language: str = LANGUAGE):
                 "user",
             "content":
                 "\n".join([
-                    f"Please summarize the following chat log to a flat bullet list.",
+                    f"Please summarize the following chat log to a flat markdown formatted bullet list.",
                     "Do not write a line by line summary. Instead, summarize the overall conversation.",
                     "Do not include greeting/salutation/polite expressions in summary.",
                     "Make the summary easy to read while maintaining a conversational tone and retaining meaning."
