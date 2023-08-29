@@ -125,7 +125,7 @@ def get_workspace_name(client: WebClient):
             return ""
     except SlackApiError as e:
         print(f"Error retrieving workspace name: {e.response['error']}")
-        return "tatari"  # None  # todo: don't hardcode the workspace name
+        return "tatari"  # None  # fixme: don't hardcode a default (just waiting on scope approval)
 
 
 def main():

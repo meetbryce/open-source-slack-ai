@@ -104,4 +104,8 @@ async def analyze_topics_of_history(channel_name: str, messages, num_topics: int
     # Please do not split up your response based on the analysis methodology; you should give one set of takeaways.
     # \n\n{topics_str}
 
+    # TODO: generate the prompt above and pass it to GPT4 (maybe leverage that stuff about code mode or whatever)
+
+    # todo: maybe incorporate (or replace) the core /tldr
+
     return topics_str
