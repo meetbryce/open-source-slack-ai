@@ -42,6 +42,7 @@ def get_name_from_id(client: WebClient, user_or_bot_id: str) -> str:
     Returns:
         str: The name associated with the ID.
     """
+    # fixme: doesn't work when it's a slash command (works fine as shortcut i.e. for threads)
     if user_or_bot_id in _id_name_cache:
         return _id_name_cache[user_or_bot_id]
 
@@ -70,11 +71,11 @@ async def get_direct_message_channel_id(client: WebClient) -> str:
     """
     try:
         # response = client.conversations_open(users=[await get_bot_id(client)])
-        user_id = client.auth_test()['user_id']  # fixme: this is getting the bot user!
-        print(f'{user_id=}')
+        print('fixme: getting DM channel ID using hardcoded value')
+        # user_id = client.auth_test()['user_id']  # fixme: this is getting the bot user!
+
         user_id = 'UPU1WE23F'  # fixme: hardcoded with Bryce's user ID for now
         response = client.conversations_open(users=user_id)
-        print(f'channel_id=\'{response["channel"]["id"]}\'')
         return response["channel"]["id"]
     except SlackApiError as e:
         print(f"Error fetching bot DM channel ID: {e.response['error']}")
