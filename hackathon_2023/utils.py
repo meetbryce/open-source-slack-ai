@@ -47,6 +47,7 @@ def get_name_from_id(client: WebClient, user_or_bot_id: str) -> str:
 
     try:
         return user_or_bot_id  # FIXME: disabling while scope is awaiting approval
+        # FIXME: should be async?
         # First, try fetching user info
         user_response = client.users_info(user=user_or_bot_id)
         if user_response.get("ok"):
@@ -63,3 +64,21 @@ def get_name_from_id(client: WebClient, user_or_bot_id: str) -> str:
         print(f"Error fetching name: {e.response['error']}")
 
     return 'Someone'
+
+
+async def get_direct_message_channel_id(client: WebClient) -> str:
+    """
+    Get the direct message channel ID for the bot, so you can say() via direct message.
+    :return str:
+    """
+    try:
+        # response = client.conversations_open(users=[await get_bot_id(client)])
+        user_id = client.auth_test()['user_id']  # fixme: this is getting the bot user!
+        print(f'{user_id=}')
+        user_id = 'UPU1WE23F'  # fixme: hardcoded with Bryce's user ID for now
+        response = client.conversations_open(users=user_id)
+        print(f'{response=}')
+        return response["channel"]["id"]
+    except SlackApiError as e:
+        print(f"Error fetching bot DM channel ID: {e.response['error']}")
+        raise e
