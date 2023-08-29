@@ -18,9 +18,17 @@ async def handler_shortcuts(client: WebClient, is_private, payload, say):
             original_message = messages[0]['text']
             workspace_name = 'tatari'  # todo: don't hardcode the workspace name
             link = f"https://{workspace_name}.slack.com/archives/{channel_id}/p{payload['message_ts'].replace('.', '')}"
-            original_message += f' ({link})\n'
+
+            # todo: format original message as a quote (need to get markdown formatting working first)
+
+            # truncate the message if it's longer than 120 characters &/or it contains \n and append the link
+            original_message = original_message.split('\n')
+            thread_hint = original_message[0] if len(original_message) == 1 else f'{original_message[0]}...'
+            thread_hint = thread_hint if len(thread_hint) <= 120 else thread_hint[:120] + '...'
+
+            context_message = f'*Summary of thread:* {thread_hint} ({link})\n'
             summary = summarize_slack_messages(client, messages)
-            summary.insert(0, original_message)
+            summary.insert(0, context_message)
             print('made it this far', channel_id)
             try:
                 return await say(channel=channel_id_for_say, text='\n'.join(summary))
