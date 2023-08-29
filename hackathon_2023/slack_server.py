@@ -77,9 +77,8 @@ async def handle_slash_command(ack, payload, say):
 
     history = await get_channel_history(client, channel_id)
     history.reverse()
-    summary = summarize_slack_messages(client, history)
-    summary.insert(0, f'*Summary of #{channel_name}* (last {len(history)} messages)\n')
-
+    summary = summarize_slack_messages(client, history,
+                                       f'*Summary of #{channel_name}* (last {len(history)} messages)\n')
     return await say('\n'.join(summary))
 
 

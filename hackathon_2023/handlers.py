@@ -27,14 +27,11 @@ async def handler_shortcuts(client: WebClient, is_private, payload, say):
             thread_hint = thread_hint if len(thread_hint) <= 120 else thread_hint[:120] + '...'
 
             context_message = f'*Summary of thread:* {thread_hint} ({link})\n'
-            summary = summarize_slack_messages(client, messages)
-            summary.insert(0, context_message)
-            print('made it this far', channel_id)
+            summary = summarize_slack_messages(client, messages, context_message)
             try:
                 return await say(channel=channel_id_for_say, text='\n'.join(summary))
             except SlackApiError as e:
                 if e.response['error'] == 'channel_not_found':
-                    print('attempting to DM instead')
                     return await say(channel=dm_channel_id, text='\n'.join(summary))
 
                 raise e
