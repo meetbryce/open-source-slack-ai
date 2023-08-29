@@ -80,6 +80,7 @@ async def get_direct_message_channel_id(client: WebClient) -> str:
     Get the direct message channel ID for the bot, so you can say() via direct message.
     :return str:
     """
+    # todo: cache this sucker too
     try:
         user_client = WebClient(token=os.environ["SLACK_USER_TOKEN"])
         response = client.conversations_open(users=user_client.auth_test()['user_id'])

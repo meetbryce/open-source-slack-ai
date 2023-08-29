@@ -12,7 +12,7 @@ from starlette.requests import Request as StarletteRequest
 
 from hackathon_2023.handlers import handler_shortcuts
 from hackathon_2023.summarizer import summarize_slack_messages
-from hackathon_2023.utils import get_channel_history
+from hackathon_2023.utils import get_channel_history, get_direct_message_channel_id
 
 load_dotenv()
 app = App(token=os.environ["SLACK_BOT_TOKEN"])
@@ -61,25 +61,29 @@ async def shutdown_event():
 
 @async_app.command('/tldr')
 async def handle_slash_command(ack, payload, say):
-    await ack()
-    await say('...')  # this is a hack to get the bot to not show an error message but work fine
+    await ack()  # fixme: this seemingly does nothing
     text = payload.get("text", None)
     channel_name = payload["channel_name"]
     channel_id = payload["channel_id"]
+    dm_channel_id = None
 
-    if text:
-        await say("ERROR: Sorry, text argument(s) aren't supported yet.")
-        return
+    if text == 'public':
+        await say('...')  # hack to get the bot to not show an error message but works fine
+    else:
+        dm_channel_id = await get_direct_message_channel_id(client)
+        await say(channel=dm_channel_id, text='...')  # hack to get the bot to not show an error message but works fine
 
-    if not channel_id:
-        await say("ERROR: No channel_id provided.")
-        return
+    if text and text != 'public':
+        return await say("ERROR: Invalid command. Try /tldr or /tldr public.")
 
     history = await get_channel_history(client, channel_id)
     history.reverse()
     summary = summarize_slack_messages(client, history,
                                        f'*Summary of #{channel_name}* (last {len(history)} messages)\n')
-    return await say('\n'.join(summary))
+
+    if text == 'public':
+        return await say(text='\n'.join(summary))
+    return await say(channel=dm_channel_id, text='\n'.join(summary))
 
 
 @async_app.shortcut("thread")
