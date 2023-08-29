@@ -95,7 +95,6 @@ async def handle_thread_shortcut(ack, payload, say):
 @async_app.shortcut("thread_private")
 async def handle_thread_private_shortcut(ack, payload, say):
     await ack()
-    # FIXME: tells the user it fails... but it works. :shrug:
     await handler_shortcuts(client, True, payload, say)
 
 
