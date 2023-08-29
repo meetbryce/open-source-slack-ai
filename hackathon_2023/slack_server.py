@@ -12,7 +12,7 @@ from starlette.requests import Request as StarletteRequest
 
 from hackathon_2023.handlers import handler_shortcuts, handler_slash_commands
 from hackathon_2023.topic_analysis import analyze_topics_of_history
-from hackathon_2023.utils import get_channel_history, get_direct_message_channel_id
+from hackathon_2023.utils import get_channel_history, get_direct_message_channel_id, parse_messages
 
 load_dotenv()
 app = App(token=os.environ["SLACK_BOT_TOKEN"])
@@ -75,8 +75,8 @@ async def handler_topics(client, ack, payload, say):
     history.reverse()
     # END boilerplate
 
-    topic_overview = await analyze_topics_of_history(payload['channel_name'], history)
-
+    messages = parse_messages(client, history, with_names=False)
+    topic_overview = await analyze_topics_of_history(payload['channel_name'], messages)
     return await say(channel=dm_channel_id, text=topic_overview)
 
 

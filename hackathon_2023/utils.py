@@ -90,12 +90,15 @@ async def get_direct_message_channel_id(client: WebClient) -> str:
         raise e
 
 
-def parse_messages(client, messages):
+def parse_messages(client, messages, with_names=True):
     def parse_message(msg):
         name = get_name_from_id(client, msg.get("user", msg.get("bot_id")))
 
         # substitute @mentions with names
         parsed_message = re.sub(r'<@U\w+>', lambda m: get_name_from_id(client, m.group(0)[2:-1]), msg["text"])
+
+        if not with_names:
+            return re.sub(r'<@U\w+>', lambda m: '', msg["text"])  # remove @mentions + don't prepend author name
 
         return f'{name}: {parsed_message}'
 
