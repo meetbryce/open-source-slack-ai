@@ -114,10 +114,8 @@ def split_messages_by_token_count(client, messages: list[dict]) -> list[list[str
         messages (list[str]): A list of strings to be split.
 
     Returns:
-        list[list[str]]: A list of sub lists, where each sublist has a token count less than or equal to max_body_tokens.
+        list[list[str]]: A list of sub lists, where each sublist has a token count less than or equal to max_body_tokens
     """
-    # todo: get the username from `user` (the user id)
-    # todo: get the bot name from the bot_id
     message_texts = [f'{get_name_from_id(client, msg.get("user", msg.get("bot_id")))}: {msg["text"]}' for msg in
                      messages]
 

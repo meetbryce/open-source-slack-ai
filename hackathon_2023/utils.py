@@ -46,13 +46,10 @@ def get_name_from_id(client: WebClient, user_or_bot_id: str) -> str:
         return _id_name_cache[user_or_bot_id]
 
     try:
-        return user_or_bot_id  # FIXME: disabling while scope is awaiting approval
-        # FIXME: should be async?
-        # First, try fetching user info
         user_response = client.users_info(user=user_or_bot_id)
         if user_response.get("ok"):
-            _id_name_cache[user_or_bot_id] = user_response["user"]["name"]
-            return user_response["user"]["name"]
+            _id_name_cache[user_or_bot_id] = user_response["user"]["real_name"]
+            return user_response["user"]["real_name"]
 
         # If user info fails, try fetching bot info
         bot_response = client.bots_info(bot=user_or_bot_id)
