@@ -2,7 +2,7 @@ from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 
 from hackathon_2023.summarizer import summarize_slack_messages
-from hackathon_2023.utils import get_direct_message_channel_id, get_workspace_name
+from hackathon_2023.utils import get_direct_message_channel_id, get_workspace_name, get_channel_history
 
 
 async def handler_shortcuts(client: WebClient, is_private, payload, say):
@@ -38,3 +38,29 @@ async def handler_shortcuts(client: WebClient, is_private, payload, say):
         if e.response['error'] == 'channel_not_found':
             return await say(channel=dm_channel_id, text="Sorry, couldn't find the channel.")
         return await say(channel=dm_channel_id, text=f"Encountered an error: {e.response['error']}")
+
+
+async def handler_slash_commands(client, ack, payload, say):
+    await ack()  # fixme: this seemingly does nothing
+    text = payload.get("text", None)
+    channel_name = payload["channel_name"]
+    channel_id = payload["channel_id"]
+    dm_channel_id = None
+
+    if text == 'public':
+        await say('...')  # hack to get the bot to not show an error message but works fine
+    else:
+        dm_channel_id = await get_direct_message_channel_id(client)
+        await say(channel=dm_channel_id, text='...')  # hack to get the bot to not show an error message but works fine
+
+    if text and text != 'public':
+        return await say("ERROR: Invalid command. Try /tldr or /tldr public.")
+
+    history = await get_channel_history(client, channel_id)
+    history.reverse()
+    summary = summarize_slack_messages(client, history,
+                                       f'*Summary of #{channel_name}* (last {len(history)} messages)\n')
+
+    if text == 'public':
+        return await say(text='\n'.join(summary))
+    return await say(channel=dm_channel_id, text='\n'.join(summary))

@@ -10,8 +10,8 @@ from slack_bolt.async_app import AsyncApp
 from slack_sdk import WebClient
 from starlette.requests import Request as StarletteRequest
 
-from hackathon_2023.handlers import handler_shortcuts
-from hackathon_2023.summarizer import summarize_slack_messages
+from hackathon_2023.handlers import handler_shortcuts, handler_slash_commands
+from hackathon_2023.topic_analysis import analyze_topics_of_history
 from hackathon_2023.utils import get_channel_history, get_direct_message_channel_id
 
 load_dotenv()
@@ -61,29 +61,28 @@ async def shutdown_event():
 
 @async_app.command('/tldr')
 async def handle_slash_command(ack, payload, say):
-    await ack()  # fixme: this seemingly does nothing
-    text = payload.get("text", None)
-    channel_name = payload["channel_name"]
-    channel_id = payload["channel_id"]
-    dm_channel_id = None
+    return await handler_slash_commands(client, ack, payload, say)
 
-    if text == 'public':
-        await say('...')  # hack to get the bot to not show an error message but works fine
-    else:
-        dm_channel_id = await get_direct_message_channel_id(client)
-        await say(channel=dm_channel_id, text='...')  # hack to get the bot to not show an error message but works fine
 
-    if text and text != 'public':
-        return await say("ERROR: Invalid command. Try /tldr or /tldr public.")
+# TODO: move to handlers.py -- likely as part of handler_slash_commands()
+async def handler_topics(client, ack, payload, say):
+    # START boilerplate
+    await ack()
+    dm_channel_id = await get_direct_message_channel_id(client)
+    await say(channel=dm_channel_id, text='...')
 
-    history = await get_channel_history(client, channel_id)
+    history = await get_channel_history(client, payload["channel_id"])
     history.reverse()
-    summary = summarize_slack_messages(client, history,
-                                       f'*Summary of #{channel_name}* (last {len(history)} messages)\n')
+    # END boilerplate
 
-    if text == 'public':
-        return await say(text='\n'.join(summary))
-    return await say(channel=dm_channel_id, text='\n'.join(summary))
+    topic_overview = await analyze_topics_of_history(payload['channel_name'], history)
+
+    return await say(channel=dm_channel_id, text=topic_overview)
+
+
+@async_app.command('/tldr_topics')
+async def temp__handle_slash_command_topics(ack, payload, say):
+    return await handler_topics(client, ack, payload, say)
 
 
 @async_app.shortcut("thread")
