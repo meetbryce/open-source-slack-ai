@@ -1,3 +1,5 @@
+import re
+
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 
@@ -7,7 +9,7 @@ _id_name_cache = {}
 async def get_channel_history(client: WebClient, channel_id: str) -> list:
     try:
         response = client.conversations_history(channel=channel_id, limit=1000)  # 1000 is the max limit
-        bot_id = await get_bot_id(client)
+        bot_id = await get_bot_id(client)  # fixme: this doesn't work
         # todo: exclude messages that start with `/` (i.e. slash commands)
         # todo: support excluding other bots too
         return [msg for msg in response["messages"] if msg.get("bot_id") != bot_id]
@@ -42,7 +44,6 @@ def get_name_from_id(client: WebClient, user_or_bot_id: str) -> str:
     Returns:
         str: The name associated with the ID.
     """
-    # fixme: doesn't work when it's a slash command (works fine as shortcut i.e. for threads)
     if user_or_bot_id in _id_name_cache:
         return _id_name_cache[user_or_bot_id]
 
@@ -51,15 +52,22 @@ def get_name_from_id(client: WebClient, user_or_bot_id: str) -> str:
         if user_response.get("ok"):
             _id_name_cache[user_or_bot_id] = user_response["user"]["real_name"]
             return user_response["user"]["real_name"]
-
-        # If user info fails, try fetching bot info
-        bot_response = client.bots_info(bot=user_or_bot_id)
-        if bot_response.get("ok"):
-            _id_name_cache[user_or_bot_id] = bot_response["bot"]["name"]
-            return bot_response["bot"]["name"]
-
+        else:
+            print('user fetch failed')
+            raise SlackApiError("user fetch failed", user_response)
     except SlackApiError as e:
-        print(f"Error fetching name: {e.response['error']}")
+        if e.response["error"] == "user_not_found":
+            try:
+                bot_response = client.bots_info(bot=user_or_bot_id)
+                if bot_response.get("ok"):
+                    _id_name_cache[user_or_bot_id] = bot_response["bot"]["name"]
+                    return bot_response["bot"]["name"]
+                else:
+                    print('bot fetch failed')
+                    raise SlackApiError("bot fetch failed", bot_response)
+            except SlackApiError as e:
+                print(f"Error fetching name for bot {user_or_bot_id=}: {e.response['error']}")
+        print(f"Error fetching name for {user_or_bot_id=}: {e.response['error']}")
 
     return 'Someone'
 
@@ -80,3 +88,12 @@ async def get_direct_message_channel_id(client: WebClient) -> str:
     except SlackApiError as e:
         print(f"Error fetching bot DM channel ID: {e.response['error']}")
         raise e
+
+
+def parse_messages(client, messages):
+    def parse_message(msg):
+        name = get_name_from_id(client, msg.get("user", msg.get("bot_id")))
+        parsed_message = re.sub(r'<@U\w+>', lambda m: get_name_from_id(client, m.group(0)[2:-1]), msg["text"])
+        return f'{name}: {parsed_message}'
+
+    return [parse_message(message) for message in messages]

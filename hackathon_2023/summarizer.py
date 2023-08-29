@@ -4,7 +4,7 @@ import re
 
 from dotenv import load_dotenv
 
-from hackathon_2023.utils import get_name_from_id
+from hackathon_2023.utils import parse_messages
 
 load_dotenv()
 CHAT_MODEL = str(os.environ.get('CHAT_MODEL') or "gpt-3.5-turbo").strip()
@@ -116,15 +116,14 @@ def split_messages_by_token_count(client, messages: list[dict]) -> list[list[str
     Returns:
         list[list[str]]: A list of sub lists, where each sublist has a token count less than or equal to max_body_tokens
     """
-    message_texts = [f'{get_name_from_id(client, msg.get("user", msg.get("bot_id")))}: {msg["text"]}' for msg in
-                     messages]
+    parsed_messages = parse_messages(client, messages)
 
-    body_token_counts = [estimate_openai_chat_token_count(msg) for msg in message_texts]
+    body_token_counts = [estimate_openai_chat_token_count(msg) for msg in parsed_messages]
     result = []
     current_sublist = []
     current_count = 0
 
-    for message, count in zip(message_texts, body_token_counts):
+    for message, count in zip(parsed_messages, body_token_counts):
         if current_count + count <= MAX_BODY_TOKENS:
             current_sublist.append(message)
             current_count += count
