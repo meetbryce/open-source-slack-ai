@@ -8,7 +8,6 @@ from hackathon_2023.utils import get_direct_message_channel_id
 async def handler_shortcuts(client: WebClient, is_private, payload, say):
     channel_id = payload['channel']['id'] if payload['channel']['id'] else payload['channel_id']
     dm_channel_id = await get_direct_message_channel_id(client)
-    # fixme: (let people know if it's not a thread and summarize the message instead)
     channel_id_for_say = dm_channel_id if is_private else channel_id
 
     try:
@@ -26,14 +25,13 @@ async def handler_shortcuts(client: WebClient, is_private, payload, say):
             thread_hint = original_message[0] if len(original_message) == 1 else f'{original_message[0]}...'
             thread_hint = thread_hint if len(thread_hint) <= 120 else thread_hint[:120] + '...'
 
-            context_message = f'*Summary of thread:* {thread_hint} ({link})\n'
+            context_message = f'*Summary of {"thread" if len(messages) > 1 else "message"}:* {thread_hint} ({link})\n'
             summary = summarize_slack_messages(client, messages, context_message)
             try:
                 return await say(channel=channel_id_for_say, text='\n'.join(summary))
             except SlackApiError as e:
                 if e.response['error'] == 'channel_not_found':
                     return await say(channel=dm_channel_id, text='\n'.join(summary))
-
                 raise e
         else:
             return await say(channel=channel_id_for_say, text="Sorry, couldn't fetch the message and its replies.")
