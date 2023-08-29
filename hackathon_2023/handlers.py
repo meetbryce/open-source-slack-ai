@@ -2,7 +2,7 @@ from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 
 from hackathon_2023.summarizer import summarize_slack_messages
-from hackathon_2023.utils import get_direct_message_channel_id
+from hackathon_2023.utils import get_direct_message_channel_id, get_workspace_name
 
 
 async def handler_shortcuts(client: WebClient, is_private, payload, say):
@@ -16,7 +16,7 @@ async def handler_shortcuts(client: WebClient, is_private, payload, say):
         if response['ok']:
             messages = response['messages']
             original_message = messages[0]['text']
-            workspace_name = 'tatari'  # todo: don't hardcode the workspace name
+            workspace_name = get_workspace_name(client)
             link = f"https://{workspace_name}.slack.com/archives/{channel_id}/p{payload['message_ts'].replace('.', '')}"
 
             # truncate the message if it's longer than 120 characters &/or it contains \n and append the link

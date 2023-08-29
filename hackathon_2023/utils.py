@@ -100,3 +100,37 @@ def parse_messages(client, messages):
         return f'{name}: {parsed_message}'
 
     return [parse_message(message) for message in messages]
+
+
+def get_workspace_name(client: WebClient):
+    """
+    Retrieve the workspace name using an instantiated Slack WebClient.
+
+    Args:
+    - client (WebClient): An instantiated Slack WebClient.
+
+    Returns:
+    - str: The workspace name if found, otherwise an empty string.
+    """
+
+    try:
+        response = client.team_info()
+        if response["ok"]:
+            return response["team"]["name"]
+        else:
+            print(f"Error retrieving workspace name: {response['error']}")
+            return ""
+    except SlackApiError as e:
+        print(f"Error retrieving workspace name: {e.response['error']}")
+        return "tatari"  # None  # todo: don't hardcode the workspace name
+
+
+def main():
+    print('DEBUGGING')
+    client = WebClient(token=os.environ["SLACK_BOT_TOKEN"])
+    workspace_name = get_workspace_name(client)
+    print(f'{workspace_name=}')
+
+
+if __name__ == '__main__':
+    main()
