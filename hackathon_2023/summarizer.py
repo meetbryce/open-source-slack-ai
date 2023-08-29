@@ -139,8 +139,6 @@ def split_messages_by_token_count(client, messages: list[dict]) -> list[list[str
 
 
 def summarize_slack_messages(client, messages: list, context_message: str) -> list:
-    # todo: add support for providing the initial result message
-
     result_text = [context_message]
 
     for split_messages in split_messages_by_token_count(client, messages):

@@ -12,7 +12,7 @@ _id_name_cache = {}
 async def get_channel_history(client: WebClient, channel_id: str) -> list:
     try:
         response = client.conversations_history(channel=channel_id, limit=1000)  # 1000 is the max limit
-        bot_id = await get_bot_id(client)  # fixme: this doesn't work
+        bot_id = await get_bot_id(client)
         # todo: exclude messages that start with `/` (i.e. slash commands)
         # todo: support excluding other bots too
         return [msg for msg in response["messages"] if msg.get("bot_id") != bot_id]
