@@ -3,6 +3,7 @@
   <component name="Black">
     <option name="executionMode" value="BINARY" />
     <option name="pathToExecutable" value="/opt/homebrew/anaconda3/bin/black" />
+    <option name="sdkUUID" value="d74a610a-787f-4799-a533-5f0e8a45733d" />
   </component>
   <component name="ProjectRootManager" version="2" languageLevel="JDK_20" project-jdk-name="Poetry (hackathon-2023)" project-jdk-type="Python SDK">
     <output url="file://$PROJECT_DIR$/out" />
