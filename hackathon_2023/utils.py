@@ -1,3 +1,4 @@
+import os
 import re
 
 from dotenv import load_dotenv
@@ -80,12 +81,8 @@ async def get_direct_message_channel_id(client: WebClient) -> str:
     :return str:
     """
     try:
-        # response = client.conversations_open(users=[await get_bot_id(client)])
-        print('fixme: getting DM channel ID using hardcoded value')
-        # user_id = client.auth_test()['user_id']  # fixme: this is getting the bot user!
-
-        user_id = 'UPU1WE23F'  # fixme: hardcoded with Bryce's user ID for now
-        response = client.conversations_open(users=user_id)
+        user_client = WebClient(token=os.environ["SLACK_USER_TOKEN"])
+        response = client.conversations_open(users=user_client.auth_test()['user_id'])
         return response["channel"]["id"]
     except SlackApiError as e:
         print(f"Error fetching bot DM channel ID: {e.response['error']}")
@@ -95,7 +92,10 @@ async def get_direct_message_channel_id(client: WebClient) -> str:
 def parse_messages(client, messages):
     def parse_message(msg):
         name = get_name_from_id(client, msg.get("user", msg.get("bot_id")))
+
+        # substitute @mentions with names
         parsed_message = re.sub(r'<@U\w+>', lambda m: get_name_from_id(client, m.group(0)[2:-1]), msg["text"])
+
         return f'{name}: {parsed_message}'
 
     return [parse_message(message) for message in messages]
