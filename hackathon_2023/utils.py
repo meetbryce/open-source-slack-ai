@@ -77,7 +77,7 @@ async def get_direct_message_channel_id(client: WebClient) -> str:
         print(f'{user_id=}')
         user_id = 'UPU1WE23F'  # fixme: hardcoded with Bryce's user ID for now
         response = client.conversations_open(users=user_id)
-        print(f'{response=}')
+        print(f'channel_id=\'{response["channel"]["id"]}\'')
         return response["channel"]["id"]
     except SlackApiError as e:
         print(f"Error fetching bot DM channel ID: {e.response['error']}")

@@ -118,7 +118,8 @@ def split_messages_by_token_count(client, messages: list[dict]) -> list[list[str
     """
     # todo: get the username from `user` (the user id)
     # todo: get the bot name from the bot_id
-    message_texts = [f'{get_name_from_id(client, msg.get("user", msg.get("bot_id")))}: {msg["text"]}' for msg in messages]
+    message_texts = [f'{get_name_from_id(client, msg.get("user", msg.get("bot_id")))}: {msg["text"]}' for msg in
+                     messages]
 
     body_token_counts = [estimate_openai_chat_token_count(msg) for msg in message_texts]
     result = []
@@ -139,6 +140,8 @@ def split_messages_by_token_count(client, messages: list[dict]) -> list[list[str
 
 
 def summarize_slack_messages(client, messages: list) -> list:
+    # todo: add support for providing the initial result message
+
     result_text = []
 
     for split_messages in split_messages_by_token_count(client, messages):

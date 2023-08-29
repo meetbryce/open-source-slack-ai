@@ -8,9 +8,9 @@ from slack_bolt.adapter.socket_mode.aiohttp import AsyncSocketModeHandler
 from slack_bolt.adapter.starlette import SlackRequestHandler
 from slack_bolt.async_app import AsyncApp
 from slack_sdk import WebClient
-from slack_sdk.errors import SlackApiError
 from starlette.requests import Request as StarletteRequest
 
+from hackathon_2023.handlers import handler_shortcuts
 from hackathon_2023.summarizer import summarize_slack_messages
 from hackathon_2023.utils import get_channel_history
 
@@ -86,27 +86,14 @@ async def handle_slash_command(ack, payload, say):
 @async_app.shortcut("thread")
 async def handle_thread_shortcut(ack, payload, say):
     await ack()
-    channel_id = payload['channel']['id'] if payload['channel']['id'] else payload['channel_id']
-    # fixme: (let people know if it's not a thread and summarize the message instead)
-    try:
-        # Fetch the message using the payload's ts (timestamp) and channel ID
-        response = client.conversations_replies(channel=channel_id, ts=payload['message_ts'])
-        # channel_id = 'TODO'  # FIXME: overwriting to the test channel during testing
-        if response['ok']:
-            messages = response['messages']
-            original_message = messages[0]['text']
-            workspace_name = 'tatari'  # todo: don't hardcode the workspace name
-            link = f"https://{workspace_name}.slack.com/archives/{channel_id}/p{payload['message_ts'].replace('.', '')}"
-            original_message += f' ({link})\n'
-            summary = summarize_slack_messages(client, messages)
-            summary.insert(0, original_message)
-            return await say(channel=channel_id, text='\n'.join(summary))
-        else:
-            return await say(channel=channel_id, text="Sorry, couldn't fetch the message and its replies.")
-    except SlackApiError as e:
-        await say(channel=channel_id, text=f"Encountered an error: {e.response['error']}")
+    await handler_shortcuts(client, False, payload, say)
 
-    return await say(channel=channel_id, text='Summarized it for you (but not really, lol)')
+
+@async_app.shortcut("thread_private")
+async def handle_thread_private_shortcut(ack, payload, say):
+    await ack()
+    # FIXME: tells the user it fails... but it works. :shrug:
+    await handler_shortcuts(client, True, payload, say)
 
 
 if __name__ == "__main__":
