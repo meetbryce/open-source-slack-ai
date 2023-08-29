@@ -1,8 +1,10 @@
 import re
 
+from dotenv import load_dotenv
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 
+load_dotenv()
 _id_name_cache = {}
 
 
@@ -27,7 +29,7 @@ async def get_bot_id(client) -> str:
     """
     try:
         response = client.auth_test()
-        return response["user_id"]
+        return response["bot_id"]
     except SlackApiError as e:
         print(f"Error fetching bot ID: {e.response['error']}")
         return 'None'

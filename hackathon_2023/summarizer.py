@@ -1,7 +1,7 @@
 import os
-import openai
 import re
 
+import openai
 from dotenv import load_dotenv
 
 from hackathon_2023.utils import parse_messages
@@ -115,6 +115,8 @@ def split_messages_by_token_count(client, messages: list[dict]) -> list[list[str
 
     Returns:
         list[list[str]]: A list of sub lists, where each sublist has a token count less than or equal to max_body_tokens
+        :param messages:
+        :param client:
     """
     parsed_messages = parse_messages(client, messages)
 
