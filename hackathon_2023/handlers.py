@@ -9,6 +9,7 @@ async def handler_shortcuts(client: WebClient, is_private, payload, say):
     channel_id = payload['channel']['id'] if payload['channel']['id'] else payload['channel_id']
     dm_channel_id = await get_direct_message_channel_id(client)
     channel_id_for_say = dm_channel_id if is_private else channel_id
+    await say(channel=channel_id_for_say, text='...')
 
     try:
         response = client.conversations_replies(channel=channel_id, ts=payload['message_ts'])
