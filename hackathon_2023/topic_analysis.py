@@ -1,17 +1,30 @@
+import os
 import re
 import string
 
-import spacy
 import nltk
-from nltk.corpus import stopwords
-from sklearn.cluster import KMeans
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.decomposition import TruncatedSVD
+import openai
+import spacy
+from dotenv import load_dotenv
 from gensim import corpora
 from gensim.models import LdaModel, Phrases
+from nltk.corpus import stopwords
+from sklearn.cluster import KMeans
+from sklearn.decomposition import TruncatedSVD
+from sklearn.feature_extraction.text import TfidfVectorizer
 
+load_dotenv()
 nltk.download('stopwords')
 nlp = spacy.load("en_core_web_md")  # `poetry add {download link}` from https://spacy.io/models/en#en_core_web_md
+OPEN_AI_TOKEN = str(os.environ.get('OPEN_AI_TOKEN')).strip()
+TEMPERATURE = float(os.environ.get('TEMPERATURE') or 0.2) + 0.1
+CHAT_MODEL = 'gpt-4'
+DEBUG = bool(os.environ.get('DEBUG', False))
+
+if OPEN_AI_TOKEN == "":
+    raise ValueError("OPEN_AI_TOKEN is not set in .env file")
+
+openai.api_key = OPEN_AI_TOKEN
 
 
 async def _kmeans_topics(tfidf_matrix, num_topics, terms):
@@ -62,7 +75,44 @@ async def _lda_topics(messages, num_topics, stop_words):
     return topics
 
 
-async def analyze_topics_of_history(channel_name: str, messages, num_topics: int = 7) -> str:
+async def _synthesize_topics(topics_str: str, channel: str) -> str:
+    # todo: (maybe leverage that stuff about code mode or whatever)?
+    prompt = (
+        f"For the provided results from topic analyses on the entire history of the \"{channel}\" Slack channel, "
+        f"please provide a conversational summary and interpretation. Each bullet is a cluster under the methodology "
+        f"heading; do not mention the methodology. When analyzing each cluster, please conflate duplicates and ignore "
+        f"meaningless clusters. Do not include this prompt in your response. Please provide a direct bullet-point "
+        f"analysis of the provided results. Avoid introductory or transitional sentences. Focus directly on the "
+        f"content. Please do not split up your response based on the analysis methodology; you should give one set of "
+        f"takeaways.\n\n{topics_str}\n")
+
+    completion = openai.ChatCompletion.create(
+        model=CHAT_MODEL,
+        temperature=TEMPERATURE,
+        messages=[
+            {
+                "role": "system",
+                "content": "You are a topic analysis expert, you are synthesizing the results of various topic analysis"
+                           "methods conducted on a Slack channel's message history. You write conversationally and "
+                           "never use technical terms like KMeans, LDA, clustering, or LSA. You always respond in "
+                           "markdown formatting ready for Slack."
+            },
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ]
+    )
+    result = completion.choices[0].message.content
+    print(result)
+
+    # parse the message reformat it for delivery via Slack message
+    result = completion.choices[0].message.content.replace('**', '*')
+
+    return result
+
+
+async def analyze_topics_of_history(channel_name: str, messages, num_topics: int = 6) -> str:
     # Remove URLs
     messages = [re.sub(r'http\S+', '', message) for message in messages]
 
@@ -71,6 +121,8 @@ async def analyze_topics_of_history(channel_name: str, messages, num_topics: int
 
     # Lemmatize e.g. running -> run
     messages = [' '.join([token.lemma_ for token in nlp(message)]) for message in messages]
+
+    # todo: Redact the names of channel members (to prevent any awkwardness)
 
     # Define stop words
     stop_words = set(stopwords.words('english'))
@@ -88,24 +140,11 @@ async def analyze_topics_of_history(channel_name: str, messages, num_topics: int
     topics_str = f"*Topic Analysis of #{channel_name}:*\n\n"
 
     for (name, model) in [('KMeans', kmeans_results), ('LSA', lsa_results), ('LDA (w/ Gensim)', lda_results)]:
-        topics_str += f"\n*{name} Results:*\n"
+        if DEBUG:
+            topics_str += f"\n*{name} Results:*\n"
         for topic, terms in model.items():
             topics_str += f" • {', '.join(terms)}\n"
 
     print(topics_str)
 
-    # -- GPT-4 Prompt for Synthesis --
-
-    # For the provided results from topic analyses on the entire history of the "product_leadership" Slack channel,
-    # please provide a conversational summary and interpretation. Each bullet is a cluster under the methodology
-    # heading; do not mention the methodology. When analyzing each cluster, please conflate duplicates and ignore
-    # meaningless clusters. Do not include this prompt in your response. Please provide a direct bullet-point
-    # analysis of the provided results. Avoid introductory or transitional sentences. Focus directly on the content.
-    # Please do not split up your response based on the analysis methodology; you should give one set of takeaways.
-    # \n\n{topics_str}
-
-    # TODO: generate the prompt above and pass it to GPT4 (maybe leverage that stuff about code mode or whatever)
-
-    # todo: maybe incorporate (or replace) the core /tldr
-
-    return topics_str
+    return await _synthesize_topics(topics_str, channel_name)
