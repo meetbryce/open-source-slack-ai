@@ -56,12 +56,17 @@ async def handler_slash_commands(client, ack, payload, say):
 
     if text and text != 'public':
         return await say("ERROR: Invalid command. Try /tldr or /tldr public.")
+    try:
+        history = await get_channel_history(client, channel_id)
+        history.reverse()
+        summary = summarize_slack_messages(client, history,
+                                           f'*Summary of #{channel_name}* (last {len(history)} messages)\n')
 
-    history = await get_channel_history(client, channel_id)
-    history.reverse()
-    summary = summarize_slack_messages(client, history,
-                                       f'*Summary of #{channel_name}* (last {len(history)} messages)\n')
-
-    if text == 'public':
-        return await say(text='\n'.join(summary))
-    return await say(channel=dm_channel_id, text='\n'.join(summary))
+        if text == 'public':
+            return await say(text='\n'.join(summary))
+        return await say(channel=dm_channel_id, text='\n'.join(summary))
+    except SlackApiError as e:
+        if e.response['error'] == 'channel_not_found':
+            return await say(channel=dm_channel_id,
+                             text="Sorry, couldn't find the channel. Have you added 'me' to the channel?")
+        return await say(channel=dm_channel_id, text=f"Encountered an error: {e.response['error']}")
