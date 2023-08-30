@@ -107,7 +107,9 @@ async def _synthesize_topics(topics_str: str, channel: str) -> str:
     print(result)
 
     # parse the message reformat it for delivery via Slack message
-    result = completion.choices[0].message.content.replace('**', '*')
+    result = result.replace('\n* ', '\n- ')
+    result = result.replace('**', '*')
+    result = f'*Channel Overview: #{channel}*\n\n' + result
 
     return result
 

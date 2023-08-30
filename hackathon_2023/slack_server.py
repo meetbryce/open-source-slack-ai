@@ -97,6 +97,12 @@ async def handle_thread_private_shortcut(ack, payload, say):
     await handler_shortcuts(client, True, payload, say)
 
 
+@app.event("message")
+async def handle_message_events(body, logger):
+    print(f'message {body=}')
+    logger.info(body)
+
+
 if __name__ == "__main__":
     import uvicorn
 

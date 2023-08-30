@@ -17,6 +17,7 @@ async def get_channel_history(client: WebClient, channel_id: str) -> list:
         # todo: support excluding other bots too
         return [msg for msg in response["messages"] if msg.get("bot_id") != bot_id]
     except SlackApiError as e:
+        # fixme: check for not_in_channel error and DM the user to let them know
         print(f"Error fetching history: {e.response['error']}")
         return []
 
@@ -36,7 +37,7 @@ async def get_bot_id(client) -> str:
         return 'None'
 
 
-def get_name_from_id(client: WebClient, user_or_bot_id: str) -> str:
+def get_name_from_id(client: WebClient, user_or_bot_id: str, is_bot=False) -> str:
     """
     Retrieves the name associated with a user ID or bot ID.
 
@@ -53,8 +54,9 @@ def get_name_from_id(client: WebClient, user_or_bot_id: str) -> str:
     try:
         user_response = client.users_info(user=user_or_bot_id)
         if user_response.get("ok"):
-            _id_name_cache[user_or_bot_id] = user_response["user"]["real_name"]
-            return user_response["user"]["real_name"]
+            name = user_response["user"].get("real_name", user_response["user"]["profile"]["real_name"])
+            _id_name_cache[user_or_bot_id] = name
+            return name
         else:
             print('user fetch failed')
             raise SlackApiError("user fetch failed", user_response)
@@ -68,9 +70,9 @@ def get_name_from_id(client: WebClient, user_or_bot_id: str) -> str:
                 else:
                     print('bot fetch failed')
                     raise SlackApiError("bot fetch failed", bot_response)
-            except SlackApiError as e:
-                print(f"Error fetching name for bot {user_or_bot_id=}: {e.response['error']}")
-        print(f"Error fetching name for {user_or_bot_id=}: {e.response['error']}")
+            except SlackApiError as e2:
+                print(f"Error fetching name for bot {user_or_bot_id=}: {e2.response['error']}")
+        print(f"Error fetching name for {user_or_bot_id=} {is_bot=} {e=}")
 
     return 'Someone'
 
@@ -92,7 +94,12 @@ async def get_direct_message_channel_id(client: WebClient) -> str:
 
 def parse_messages(client, messages, with_names=True):
     def parse_message(msg):
-        name = get_name_from_id(client, msg.get("user", msg.get("bot_id")))
+        user_id = msg.get("user")
+        if user_id is None:
+            bot_id = msg.get("bot_id")
+            name = get_name_from_id(client, bot_id, is_bot=True)
+        else:
+            name = get_name_from_id(client, user_id)
 
         # substitute @mentions with names
         parsed_message = re.sub(r'<@U\w+>', lambda m: get_name_from_id(client, m.group(0)[2:-1]), msg["text"])
