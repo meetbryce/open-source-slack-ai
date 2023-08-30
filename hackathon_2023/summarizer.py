@@ -142,7 +142,11 @@ def summarize_slack_messages(client, messages: list, context_message: str) -> li
     result_text = [context_message]
 
     for split_messages in split_messages_by_token_count(client, messages):
-        text = summarize("\n".join(split_messages), LANGUAGE)
+        try:
+            text = summarize("\n".join(split_messages), LANGUAGE)
+        except openai.error.RateLimitError as e:
+            print(e)
+            return [f"Sorry, OpenAI rate limit exceeded..."]
         result_text.append(text)
 
     return result_text
