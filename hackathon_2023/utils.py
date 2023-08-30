@@ -9,14 +9,6 @@ load_dotenv()
 _id_name_cache = {}
 
 
-async def get_channel_history(client: WebClient, channel_id: str) -> list:
-    response = client.conversations_history(channel=channel_id, limit=1000)  # 1000 is the max limit
-    bot_id = await get_bot_id(client)
-    # todo: exclude messages that start with `/` (i.e. slash commands)
-    # todo: support excluding other bots too
-    return [msg for msg in response["messages"] if msg.get("bot_id") != bot_id]
-
-
 async def get_bot_id(client) -> str:
     """
     Retrieves the bot ID using the provided Slack WebClient.
@@ -30,6 +22,29 @@ async def get_bot_id(client) -> str:
     except SlackApiError as e:
         print(f"Error fetching bot ID: {e.response['error']}")
         return 'None'
+
+
+async def get_channel_history(client: WebClient, channel_id: str) -> list:
+    response = client.conversations_history(channel=channel_id, limit=1000)  # 1000 is the max limit
+    bot_id = await get_bot_id(client)
+    # todo: (optional) excluding all other bots too
+    # todo: (optional) exclude messages that start with `/` (i.e. slash commands)
+    return [msg for msg in response["messages"] if msg.get("bot_id") != bot_id]
+
+
+async def get_direct_message_channel_id(client: WebClient) -> str:
+    """
+    Get the direct message channel ID for the bot, so you can say() via direct message.
+    :return str:
+    """
+    # todo: cache this sucker too
+    try:
+        user_client = WebClient(token=os.environ["SLACK_USER_TOKEN"])
+        response = client.conversations_open(users=user_client.auth_test()['user_id'])
+        return response["channel"]["id"]
+    except SlackApiError as e:
+        print(f"Error fetching bot DM channel ID: {e.response['error']}")
+        raise e
 
 
 def get_name_from_id(client: WebClient, user_or_bot_id: str, is_bot=False) -> str:
@@ -72,22 +87,7 @@ def get_name_from_id(client: WebClient, user_or_bot_id: str, is_bot=False) -> st
     return 'Someone'
 
 
-async def get_direct_message_channel_id(client: WebClient) -> str:
-    """
-    Get the direct message channel ID for the bot, so you can say() via direct message.
-    :return str:
-    """
-    # todo: cache this sucker too
-    try:
-        user_client = WebClient(token=os.environ["SLACK_USER_TOKEN"])
-        response = client.conversations_open(users=user_client.auth_test()['user_id'])
-        return response["channel"]["id"]
-    except SlackApiError as e:
-        print(f"Error fetching bot DM channel ID: {e.response['error']}")
-        raise e
-
-
-def parse_messages(client, messages, with_names=True):
+def get_parsed_messages(client, messages, with_names=True):
     def parse_message(msg):
         user_id = msg.get("user")
         if user_id is None:

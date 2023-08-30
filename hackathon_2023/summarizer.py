@@ -4,7 +4,7 @@ import re
 import openai
 from dotenv import load_dotenv
 
-from hackathon_2023.utils import parse_messages
+from hackathon_2023.utils import get_parsed_messages
 
 load_dotenv()
 CHAT_MODEL = str(os.environ.get('CHAT_MODEL') or "gpt-3.5-turbo").strip()
@@ -118,7 +118,7 @@ def split_messages_by_token_count(client, messages: list[dict]) -> list[list[str
         :param messages:
         :param client:
     """
-    parsed_messages = parse_messages(client, messages)
+    parsed_messages = get_parsed_messages(client, messages)
 
     body_token_counts = [estimate_openai_chat_token_count(msg) for msg in parsed_messages]
     result = []

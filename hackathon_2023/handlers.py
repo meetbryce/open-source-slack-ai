@@ -3,7 +3,7 @@ from slack_sdk.errors import SlackApiError
 
 from hackathon_2023.summarizer import summarize_slack_messages
 from hackathon_2023.topic_analysis import analyze_topics_of_history
-from hackathon_2023.utils import get_direct_message_channel_id, get_workspace_name, get_channel_history, parse_messages
+from hackathon_2023.utils import get_direct_message_channel_id, get_workspace_name, get_channel_history, get_parsed_messages
 
 
 async def handler_shortcuts(client: WebClient, is_private: bool, payload, say):
@@ -83,6 +83,6 @@ async def handler_topics_slash_command(client: WebClient, ack, payload, say):
     history.reverse()
     # END boilerplate
 
-    messages = parse_messages(client, history, with_names=False)
+    messages = get_parsed_messages(client, history, with_names=False)
     topic_overview = await analyze_topics_of_history(payload['channel_name'], messages)
     return await say(channel=dm_channel_id, text=topic_overview)
