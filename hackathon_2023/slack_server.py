@@ -10,9 +10,7 @@ from slack_bolt.async_app import AsyncApp
 from slack_sdk import WebClient
 from starlette.requests import Request as StarletteRequest
 
-from hackathon_2023.handlers import handler_shortcuts, handler_slash_commands
-from hackathon_2023.topic_analysis import analyze_topics_of_history
-from hackathon_2023.utils import get_channel_history, get_direct_message_channel_id, parse_messages
+from hackathon_2023.handlers import handler_shortcuts, handler_tldr_slash_command, handler_topics_slash_command
 
 load_dotenv()
 app = App(token=os.environ["SLACK_BOT_TOKEN"])
@@ -38,13 +36,6 @@ async def handle_direct_message(event, say):
 
 @fast_app.post("/slack/events")
 async def slack_events(request: Request):
-    """
-    Route for handling Slack events.
-    This function passes the incoming HTTP request to the SlackRequestHandler for processing.
-
-    Returns:
-        Response: The result of handling the request.
-    """
     starlette_request = StarletteRequest(request.scope, request.receive)
     return await handler.handle(starlette_request)
 
@@ -60,29 +51,13 @@ async def shutdown_event():
 
 
 @async_app.command('/tldr')
-async def handle_slash_command(ack, payload, say):
-    return await handler_slash_commands(client, ack, payload, say)
-
-
-# TODO: move to handlers.py -- likely as part of handler_slash_commands()
-async def handler_topics(client, ack, payload, say):
-    # START boilerplate
-    await ack()
-    dm_channel_id = await get_direct_message_channel_id(client)
-    await say(channel=dm_channel_id, text='...')
-
-    history = await get_channel_history(client, payload["channel_id"])
-    history.reverse()
-    # END boilerplate
-
-    messages = parse_messages(client, history, with_names=False)
-    topic_overview = await analyze_topics_of_history(payload['channel_name'], messages)
-    return await say(channel=dm_channel_id, text=topic_overview)
+async def handle_tldr_slash_command(ack, payload, say):
+    return await handler_tldr_slash_command(client, ack, payload, say)
 
 
 @async_app.command('/tldr_topics')
 async def temp__handle_slash_command_topics(ack, payload, say):
-    return await handler_topics(client, ack, payload, say)
+    return await handler_topics_slash_command(client, ack, payload, say)
 
 
 @async_app.shortcut("thread")

@@ -2,7 +2,8 @@ from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 
 from hackathon_2023.summarizer import summarize_slack_messages
-from hackathon_2023.utils import get_direct_message_channel_id, get_workspace_name, get_channel_history
+from hackathon_2023.topic_analysis import analyze_topics_of_history
+from hackathon_2023.utils import get_direct_message_channel_id, get_workspace_name, get_channel_history, parse_messages
 
 
 async def handler_shortcuts(client: WebClient, is_private, payload, say):
@@ -41,7 +42,7 @@ async def handler_shortcuts(client: WebClient, is_private, payload, say):
         return await say(channel=dm_channel_id, text=f"Encountered an error: {e.response['error']}")
 
 
-async def handler_slash_commands(client, ack, payload, say):
+async def handler_tldr_slash_command(client, ack, payload, say):
     await ack()  # fixme: this seemingly does nothing
     text = payload.get("text", None)
     channel_name = payload["channel_name"]
@@ -70,3 +71,18 @@ async def handler_slash_commands(client, ack, payload, say):
             return await say(channel=dm_channel_id,
                              text="Sorry, couldn't find the channel. Have you added 'me' to the channel?")
         return await say(channel=dm_channel_id, text=f"Encountered an error: {e.response['error']}")
+
+
+async def handler_topics_slash_command(client, ack, payload, say):
+    # START boilerplate
+    await ack()
+    dm_channel_id = await get_direct_message_channel_id(client)
+    await say(channel=dm_channel_id, text='...')
+
+    history = await get_channel_history(client, payload["channel_id"])
+    history.reverse()
+    # END boilerplate
+
+    messages = parse_messages(client, history, with_names=False)
+    topic_overview = await analyze_topics_of_history(payload['channel_name'], messages)
+    return await say(channel=dm_channel_id, text=topic_overview)
