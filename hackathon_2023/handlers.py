@@ -6,7 +6,7 @@ from hackathon_2023.topic_analysis import analyze_topics_of_history
 from hackathon_2023.utils import get_direct_message_channel_id, get_workspace_name, get_channel_history, parse_messages
 
 
-async def handler_shortcuts(client: WebClient, is_private, payload, say):
+async def handler_shortcuts(client: WebClient, is_private: bool, payload, say):
     channel_id = payload['channel']['id'] if payload['channel']['id'] else payload['channel_id']
     dm_channel_id = await get_direct_message_channel_id(client)
     channel_id_for_say = dm_channel_id if is_private else channel_id
@@ -42,7 +42,7 @@ async def handler_shortcuts(client: WebClient, is_private, payload, say):
         return await say(channel=dm_channel_id, text=f"Encountered an error: {e.response['error']}")
 
 
-async def handler_tldr_slash_command(client, ack, payload, say):
+async def handler_tldr_slash_command(client: WebClient, ack, payload, say):
     await ack()  # fixme: this seemingly does nothing
     text = payload.get("text", None)
     channel_name = payload["channel_name"]
@@ -73,7 +73,7 @@ async def handler_tldr_slash_command(client, ack, payload, say):
         return await say(channel=dm_channel_id, text=f"Encountered an error: {e.response['error']}")
 
 
-async def handler_topics_slash_command(client, ack, payload, say):
+async def handler_topics_slash_command(client: WebClient, ack, payload, say):
     # START boilerplate
     await ack()
     dm_channel_id = await get_direct_message_channel_id(client)
