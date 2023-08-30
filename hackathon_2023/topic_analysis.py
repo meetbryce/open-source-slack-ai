@@ -95,7 +95,7 @@ async def _synthesize_topics(topics_str: str, channel: str) -> str:
                 "content": "You are a topic analysis expert, you are synthesizing the results of various topic analysis"
                            "methods conducted on a Slack channel's message history. You write conversationally and "
                            "never use technical terms like KMeans, LDA, clustering, or LSA. You always respond in "
-                           "markdown formatting ready for Slack."
+                           "markdown formatting ready for Slack. Use - for bullets, not *."
             },
             {
                 "role": "user",
