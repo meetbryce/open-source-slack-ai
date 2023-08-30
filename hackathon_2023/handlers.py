@@ -36,7 +36,8 @@ async def handler_shortcuts(client: WebClient, is_private, payload, say):
             return await say(channel=channel_id_for_say, text="Sorry, couldn't fetch the message and its replies.")
     except SlackApiError as e:
         if e.response['error'] == 'channel_not_found':
-            return await say(channel=dm_channel_id, text="Sorry, couldn't find the channel.")
+            return await say(channel=dm_channel_id,
+                             text="Sorry, couldn't find the channel. Have you added 'me' to the channel?")
         return await say(channel=dm_channel_id, text=f"Encountered an error: {e.response['error']}")
 
 
