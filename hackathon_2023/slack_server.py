@@ -23,15 +23,8 @@ socket_handler = AsyncSocketModeHandler(async_app, os.environ["SLACK_APP_TOKEN"]
 
 @fast_app.get('/pulse')
 def pulse():
+    # todo: add some sort of health check for the websockets connection (or check this one when theres a sockets issue)
     return {"status": 200, "message": "ok"}
-
-
-@app.event("message")
-async def handle_direct_message(event, say):
-    if event.get("subtype") is None and event.get("channel_type") == "im":
-        user_id = event["user"]
-        text = event["text"]
-        await say(f"Received direct message from user {user_id}: {text}")
 
 
 @fast_app.post("/slack/events")
