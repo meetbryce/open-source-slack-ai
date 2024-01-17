@@ -139,11 +139,15 @@ def split_messages_by_token_count(client, messages: list[dict]) -> list[list[str
 
 
 def summarize_slack_messages(client, messages: list, context_message: str) -> list:
+    message_splits = split_messages_by_token_count(client, messages)
+    print(f'{len(message_splits)=}')
+    # return ['SHORT CIRCUITED']
     result_text = [context_message]
 
-    for split_messages in split_messages_by_token_count(client, messages):
+    # fixme: if split_messages_by_token_count > X, summarize the summary with GPT4
+    for message_split in message_splits:
         try:
-            text = summarize("\n".join(split_messages), LANGUAGE)
+            text = summarize("\n".join(message_split), LANGUAGE)
         except openai.error.RateLimitError as e:
             print(e)
             return [f"Sorry, OpenAI rate limit exceeded..."]
