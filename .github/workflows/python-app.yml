@@ -16,15 +16,40 @@ jobs:
   build:
 
     runs-on: ubuntu-latest
+    env:
+      DEBUG: True
+      TEMPERATURE: 0.35
+      SLACK_BOT_TOKEN: "xoxb-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+      SLACK_USER_TOKEN: "xoxp-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+      SLACK_SIGNING_SECRET: "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+      SLACK_BOT_USER_ID: "XXXXXXXXXXX"
+      OPEN_AI_TOKEN: "sk-XXXXXXXXXXXXXXXXXXX"
+      SLACK_APP_TOKEN: "xapp-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
 
     steps:
-    - uses: actions/checkout@v3
-    - name: Set up Python 3.10
-      uses: actions/setup-python@v3
-      with:
-        python-version: "3.10"
-    - name: Poetry Install
-      uses: knowsuchagency/poetry-install@v2
-    - name: Test with pytest
-      run: |
-        pytest --cov=hackathon_2023 tests/
+      - uses: actions/checkout@v3
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.10"
+      - name: Poetry Install
+        uses: knowsuchagency/poetry-install@v2
+        env:
+          POETRY_VIRTUALENVS_CREATE: false
+      - name: Print PATH and Git location
+        run: |
+          echo $PATH
+          which git
+      - name: Test with pytest
+        run: |
+          poetry run coverage run -m pytest tests/
+      - name: Generate Coverage Report
+        run: |
+          poetry run coverage xml
+      - name: Code Climate | Coverage
+        uses: paambaati/codeclimate-action@v5.0.0
+        with:
+          coverageCommand: poetry run coverage xml
+        env:
+          CC_TEST_REPORTER_ID: ${{secrets.CC_TEST_REPORTER_ID}}
+
