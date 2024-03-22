@@ -54,6 +54,7 @@ def get_name_from_id(client: WebClient, user_or_bot_id: str, is_bot=False) -> st
     Args:
         client (WebClient): An instance of the Slack WebClient.
         user_or_bot_id (str): The user or bot ID.
+        is_bot (bool): Whether the ID is a bot ID.
 
     Returns:
         str: The name associated with the ID.
@@ -97,10 +98,10 @@ def get_parsed_messages(client, messages, with_names=True):
             name = get_name_from_id(client, user_id)
 
         # substitute @mentions with names
-        parsed_message = re.sub(r'<@U\w+>', lambda m: get_name_from_id(client, m.group(0)[2:-1]), msg["text"])
+        parsed_message = re.sub(r'<@[UB]\w+>', lambda m: get_name_from_id(client, m.group(0)[2:-1]), msg["text"])
 
         if not with_names:
-            return re.sub(r'<@U\w+>', lambda m: '', msg["text"])  # remove @mentions + don't prepend author name
+            return re.sub(r'<@[UB]\w+>', lambda m: '', msg["text"])  # remove @mentions + don't prepend author name
 
         return f'{name}: {parsed_message}'
 
@@ -127,14 +128,11 @@ def get_workspace_name(client: WebClient):
             return ""
     except SlackApiError as e:
         print(f"Error retrieving workspace name: {e.response['error']}")
-        return "tatari"  # None  # fixme: don't hardcode a default (just waiting on scope approval)
+        return ""  # None
 
 
 def main():
     print('DEBUGGING')
-    client = WebClient(token=os.environ["SLACK_BOT_TOKEN"])
-    workspace_name = get_workspace_name(client)
-    print(f'{workspace_name=}')
 
 
 if __name__ == '__main__':
