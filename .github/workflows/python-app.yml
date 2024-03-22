@@ -43,9 +43,6 @@ jobs:
       - name: Test with pytest
         run: |
           poetry run coverage run -m pytest tests/
-      - name: Generate Coverage Report
-        run: |
-          poetry run coverage xml
       - name: Code Climate | Coverage
         uses: paambaati/codeclimate-action@v5.0.0
         with:
