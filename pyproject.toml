@@ -19,6 +19,9 @@ spacy = "^3.6.1"
 en-core-web-md = {url = "https://github.com/explosion/spacy-models/releases/download/en_core_web_md-3.6.0/en_core_web_md-3.6.0-py3-none-any.whl"}
 nltk = "^3.8.1"
 gensim = "^4.3.2"
+pytest = "^8.1.1"
+pytest-cov = "^4.1.0"
+pytest-asyncio = "^0.23.6"
 
 
 [build-system]
