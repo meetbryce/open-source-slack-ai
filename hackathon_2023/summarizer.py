@@ -7,17 +7,31 @@ from dotenv import load_dotenv
 from hackathon_2023.utils import get_parsed_messages
 
 load_dotenv()
-CHAT_MODEL = str(os.environ.get('CHAT_MODEL') or "gpt-3.5-turbo").strip()
-DEBUG = bool(os.environ.get('DEBUG', False))
+
 LANGUAGE = 'English'
 MAX_BODY_TOKENS = 3000
-OPEN_AI_TOKEN = str(os.environ.get('OPEN_AI_TOKEN')).strip()
-TEMPERATURE = float(os.environ.get('TEMPERATURE') or 0.2)
 
-if OPEN_AI_TOKEN == "":
-    raise ValueError("OPEN_AI_TOKEN is not set in .env file")
 
-openai.api_key = OPEN_AI_TOKEN
+# Refactored configuration retrieval
+def get_config():
+    chat_model = os.getenv('CHAT_MODEL', "gpt-3.5-turbo").strip()
+    temperature = float(os.getenv('TEMPERATURE', 0.2))
+    open_ai_token = os.getenv('OPEN_AI_TOKEN', '').strip()
+    debug = bool(os.environ.get('DEBUG', False))
+
+    if not open_ai_token:
+        raise ValueError("OPEN_AI_TOKEN is not set in .env file")
+    return {
+        "chat_model": chat_model,
+        "temperature": temperature,
+        "open_ai_token": open_ai_token,
+        "debug": debug
+    }
+
+
+def configure_openai_api():
+    config = get_config()
+    openai.api_key = config["open_ai_token"]
 
 
 def summarize(text: str, language: str = LANGUAGE):
@@ -36,9 +50,11 @@ def summarize(text: str, language: str = LANGUAGE):
         '- Alice greeted Bob.\n- Bob responded with a greeting.\n- Alice asked how Bob was doing.
         \n- Bob replied that he was doing well.'
     """
+    configure_openai_api()  # Ensure API key is configured just in time
+    config = get_config()
     response = openai.ChatCompletion.create(
-        model=CHAT_MODEL,
-        temperature=TEMPERATURE,
+        model=config["chat_model"],
+        temperature=config["temperature"],
         messages=[{
             "role":
                 "system",
@@ -65,8 +81,6 @@ def summarize(text: str, language: str = LANGUAGE):
                 ])
         }])
 
-    if DEBUG:
-        print(response["choices"][0]["message"]['content'])
     return response["choices"][0]["message"]['content']
 
 
@@ -157,7 +171,7 @@ def summarize_slack_messages(client, messages: list, context_message: str) -> li
 
 
 def main():
-    print('let\'s summarize!')
+    print('DEBUGGING')
 
 
 if __name__ == '__main__':
