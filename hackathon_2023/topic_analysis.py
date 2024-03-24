@@ -62,7 +62,7 @@ async def _lda_topics(messages, num_topics, stop_words):
 
     # Create a dictionary and corpus for LDA
     dictionary = corpora.Dictionary(tokenized_messages)
-    dictionary.filter_extremes(no_below=5, no_above=0.5)
+    dictionary.filter_extremes(no_below=2, no_above=0.9)
     corpus = [dictionary.doc2bow(message) for message in tokenized_messages]
 
     # Train the LDA model
@@ -124,7 +124,7 @@ async def analyze_topics_of_history(channel_name: str, messages, num_topics: int
     # Lemmatize e.g. running -> run
     messages = [' '.join([token.lemma_ for token in nlp(message)]) for message in messages]
 
-    # todo: Redact the names of channel members (to prevent any awkwardness)
+    # todo: Support the ability to redact the names of channel members (to prevent any awkwardness)
 
     # Define stop words
     stop_words = set(stopwords.words('english'))
