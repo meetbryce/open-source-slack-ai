@@ -1,0 +1,10 @@
+exclude_patterns:
+  - ".github/**/*"
+  - "**/__init__.py"
+  - ".idea/**/*"
+  - "*.iml"
+  - "poetry.lock"
+  - "pyproject.toml"
+  - "example.env"
+  - "**/*.md"
+  - ".gitignore"
