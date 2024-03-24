@@ -1,20 +1,23 @@
-import pytest
-
+import os
 from unittest.mock import patch, MagicMock
 
-
-@pytest.fixture
-def mock_dependencies():
-    with patch('slack_sdk.WebClient', new_callable=MagicMock) as mock_WebClient:
-        mock_WebClient.return_value.chat_postMessage.return_value = {"ok": True}
-        yield mock_WebClient
+import pytest
 
 
 @pytest.fixture
-def slack_server(mock_dependencies):
+def mock_app():
+    with patch('slack_bolt.App', new_callable=MagicMock) as mock:
+        mock.return_value.get.return_value = {"status": 200, "message": "ok"}
+        yield mock
+
+
+@pytest.fixture
+def mock_os_environ():
+    with patch.dict(os.environ, {"SLACK_BOT_TOKEN": "xoxb-123", "SLACK_APP_TOKEN": "xapp-123"}):
+        yield
+
+
+def test_pulse(mock_app, mock_os_environ):
     from hackathon_2023 import slack_server
-    return slack_server
-
-
-def test_pass(slack_server, mock_dependencies):
-    assert True
+    result = slack_server.pulse()
+    assert result == {"status": 200, "message": "ok"}
