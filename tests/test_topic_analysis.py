@@ -1,5 +1,7 @@
-import pytest
 from unittest.mock import patch, MagicMock
+
+import pytest
+
 from hackathon_2023 import topic_analysis
 
 

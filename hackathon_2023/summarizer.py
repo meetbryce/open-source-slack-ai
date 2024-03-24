@@ -8,16 +8,16 @@ from hackathon_2023.utils import get_parsed_messages
 
 load_dotenv()
 
-LANGUAGE = 'English'
+LANGUAGE = "English"
 MAX_BODY_TOKENS = 3000
 
 
 # Refactored configuration retrieval
 def get_config():
-    chat_model = os.getenv('CHAT_MODEL', "gpt-3.5-turbo").strip()
-    temperature = float(os.getenv('TEMPERATURE', 0.2))
-    open_ai_token = os.getenv('OPEN_AI_TOKEN', '').strip()
-    debug = bool(os.environ.get('DEBUG', False))
+    chat_model = os.getenv("CHAT_MODEL", "gpt-3.5-turbo").strip()
+    temperature = float(os.getenv("TEMPERATURE", 0.2))
+    open_ai_token = os.getenv("OPEN_AI_TOKEN", "").strip()
+    debug = bool(os.environ.get("DEBUG", False))
 
     if not open_ai_token:
         raise ValueError("OPEN_AI_TOKEN is not set in .env file")
@@ -25,7 +25,7 @@ def get_config():
         "chat_model": chat_model,
         "temperature": temperature,
         "open_ai_token": open_ai_token,
-        "debug": debug
+        "debug": debug,
     }
 
 
@@ -55,33 +55,39 @@ def summarize(text: str, language: str = LANGUAGE):
     response = openai.ChatCompletion.create(
         model=config["chat_model"],
         temperature=config["temperature"],
-        messages=[{
-            "role":
-                "system",
-            "content":
-                "\n".join([
-                    'You\'re a highly capable summarization expert who provides succinct summaries of Slack chat logs.',
-                    'The chat log format consists of one line per message in the format "Speaker: Message".',
-                    'The chat log lists the most recent messages first. Place more emphasis on recent messages.',
-                    "The `\\n` within the message represents a line break.",
-                    'Consider your summary as a whole and avoid repeating yourself unnecessarily.',
-                    f'The user understands {language} only.',
-                    f'So, The assistant needs to speak in {language}.',
-                ])
-        }, {
-            "role":
-                "user",
-            "content":
-                "\n".join([
-                    f"Please summarize the following chat log to a flat markdown formatted bullet list.",
-                    "Do not write a line by line summary. Instead, summarize the overall conversation.",
-                    "Do not include greeting/salutation/polite expressions in summary.",
-                    "Make the summary easy to read while maintaining a conversational tone and retaining meaning."
-                    f"Write in conversational {language}.", "", text
-                ])
-        }])
+        messages=[
+            {
+                "role": "system",
+                "content": "\n".join(
+                    [
+                        "You're a highly capable summarization expert who provides succinct summaries of Slack chat logs.",
+                        'The chat log format consists of one line per message in the format "Speaker: Message".',
+                        "The chat log lists the most recent messages first. Place more emphasis on recent messages.",
+                        "The `\\n` within the message represents a line break.",
+                        "Consider your summary as a whole and avoid repeating yourself unnecessarily.",
+                        f"The user understands {language} only.",
+                        f"So, The assistant needs to speak in {language}.",
+                    ]
+                ),
+            },
+            {
+                "role": "user",
+                "content": "\n".join(
+                    [
+                        f"Please summarize the following chat log to a flat markdown formatted bullet list.",
+                        "Do not write a line by line summary. Instead, summarize the overall conversation.",
+                        "Do not include greeting/salutation/polite expressions in summary.",
+                        "Make the summary easy to read while maintaining a conversational tone and retaining meaning."
+                        f"Write in conversational {language}.",
+                        "",
+                        text,
+                    ]
+                ),
+            },
+        ],
+    )
 
-    return response["choices"][0]["message"]['content']
+    return response["choices"][0]["message"]["content"]
 
 
 def estimate_openai_chat_token_count(text: str) -> int:
@@ -105,12 +111,14 @@ def estimate_openai_chat_token_count(text: str) -> int:
             [a-z]+    | # alphabets
             \s+       | # whitespace
             .           # other characters
-            )""", re.VERBOSE | re.IGNORECASE)
+            )""",
+        re.VERBOSE | re.IGNORECASE,
+    )
     matches = re.findall(pattern, text)
 
     # based on https://help.openai.com/en/articles/4936856-what-are-tokens-and-how-to-count-them
     def counter(tok):
-        if tok == ' ' or tok == '\n':
+        if tok == " " or tok == "\n":
             return 0
         elif tok.isdigit() or tok.isalpha():
             return (len(tok) + 3) // 4
@@ -134,7 +142,9 @@ def split_messages_by_token_count(client, messages: list[dict]) -> list[list[str
     """
     parsed_messages = get_parsed_messages(client, messages)
 
-    body_token_counts = [estimate_openai_chat_token_count(msg) for msg in parsed_messages]
+    body_token_counts = [
+        estimate_openai_chat_token_count(msg) for msg in parsed_messages
+    ]
     result = []
     current_sublist = []
     current_count = 0
@@ -154,7 +164,7 @@ def split_messages_by_token_count(client, messages: list[dict]) -> list[list[str
 
 def summarize_slack_messages(client, messages: list, context_message: str) -> list:
     message_splits = split_messages_by_token_count(client, messages)
-    print(f'{len(message_splits)=}')
+    print(f"{len(message_splits)=}")
     # return ['SHORT CIRCUITED']
     result_text = [context_message]
 
@@ -171,8 +181,8 @@ def summarize_slack_messages(client, messages: list, context_message: str) -> li
 
 
 def main():
-    print('DEBUGGING')
+    print("DEBUGGING")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

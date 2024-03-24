@@ -10,7 +10,11 @@ from slack_bolt.async_app import AsyncApp
 from slack_sdk import WebClient
 from starlette.requests import Request as StarletteRequest
 
-from hackathon_2023.handlers import handler_shortcuts, handler_tldr_slash_command, handler_topics_slash_command
+from hackathon_2023.handlers import (
+    handler_shortcuts,
+    handler_tldr_slash_command,
+    handler_topics_slash_command,
+)
 
 load_dotenv()
 app = App(token=os.environ["SLACK_BOT_TOKEN"])
@@ -21,7 +25,7 @@ client = WebClient(token=os.environ["SLACK_BOT_TOKEN"])
 socket_handler = AsyncSocketModeHandler(async_app, os.environ["SLACK_APP_TOKEN"])
 
 
-@fast_app.get('/pulse')
+@fast_app.get("/pulse")
 def pulse():
     # todo: add some sort of health check for the websockets connection (or check this one when theres a sockets issue)
     return {"status": 200, "message": "ok"}
@@ -43,12 +47,12 @@ async def shutdown_event():
     await socket_handler.disconnect_async()
 
 
-@async_app.command('/tldr')
+@async_app.command("/tldr")
 async def handle_tldr_slash_command(ack, payload, say):
     return await handler_tldr_slash_command(client, ack, payload, say)
 
 
-@async_app.command('/tldr_topics')
+@async_app.command("/tldr_topics")
 async def temp__handle_slash_command_topics(ack, payload, say):
     return await handler_topics_slash_command(client, ack, payload, say)
 
@@ -67,7 +71,7 @@ async def handle_thread_private_shortcut(ack, payload, say):
 
 @app.event("message")
 async def handle_message_events(body, logger):
-    print(f'message {body=}')
+    print(f"message {body=}")
     logger.info(body)
 
 

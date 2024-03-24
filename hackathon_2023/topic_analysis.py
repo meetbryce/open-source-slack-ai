@@ -14,12 +14,14 @@ from sklearn.decomposition import TruncatedSVD
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 load_dotenv()
-nltk.download('stopwords')
-nlp = spacy.load("en_core_web_md")  # `poetry add {download link}` from https://spacy.io/models/en#en_core_web_md
-OPEN_AI_TOKEN = str(os.environ.get('OPEN_AI_TOKEN')).strip()
-TEMPERATURE = float(os.environ.get('TEMPERATURE') or 0.2) + 0.1
-CHAT_MODEL = 'gpt-4'
-DEBUG = bool(os.environ.get('DEBUG', False))
+nltk.download("stopwords")
+nlp = spacy.load(
+    "en_core_web_md"
+)  # `poetry add {download link}` from https://spacy.io/models/en#en_core_web_md
+OPEN_AI_TOKEN = str(os.environ.get("OPEN_AI_TOKEN")).strip()
+TEMPERATURE = float(os.environ.get("TEMPERATURE") or 0.2) + 0.1
+CHAT_MODEL = "gpt-4"
+DEBUG = bool(os.environ.get("DEBUG", False))
 
 if OPEN_AI_TOKEN == "":
     raise ValueError("OPEN_AI_TOKEN is not set in .env file")
@@ -48,12 +50,14 @@ async def _lsa_topics(tfidf_matrix, num_topics, terms):
 
 async def _lda_topics(messages, num_topics, stop_words):
     # Remove punctuation
-    translator = str.maketrans('', '', string.punctuation)
+    translator = str.maketrans("", "", string.punctuation)
     cleaned_messages = [message.translate(translator) for message in messages]
 
     # Tokenize the messages, filter out stop words and short words
-    tokenized_messages = [[word for word in message.split() if word not in stop_words and len(word) > 3] for message in
-                          cleaned_messages]
+    tokenized_messages = [
+        [word for word in message.split() if word not in stop_words and len(word) > 3]
+        for message in cleaned_messages
+    ]
 
     # Create n-gram models
     bi_gram = Phrases(tokenized_messages, min_count=5, threshold=100)
@@ -66,7 +70,9 @@ async def _lda_topics(messages, num_topics, stop_words):
     corpus = [dictionary.doc2bow(message) for message in tokenized_messages]
 
     # Train the LDA model
-    lda_model = LdaModel(corpus, num_topics=num_topics, id2word=dictionary, passes=20)  # was 15
+    lda_model = LdaModel(
+        corpus, num_topics=num_topics, id2word=dictionary, passes=20
+    )  # was 15
 
     # Extract topics
     topics = {}
@@ -78,13 +84,14 @@ async def _lda_topics(messages, num_topics, stop_words):
 async def _synthesize_topics(topics_str: str, channel: str) -> str:
     # todo: (maybe leverage that stuff about code mode or whatever)?
     prompt = (
-        f"For the provided results from topic analyses on the entire history of the \"{channel}\" Slack channel, "
+        f'For the provided results from topic analyses on the entire history of the "{channel}" Slack channel, '
         f"please provide a conversational summary and interpretation. Each bullet is a cluster under the methodology "
         f"heading; do not mention the methodology. When analyzing each cluster, please conflate duplicates and ignore "
         f"meaningless clusters. Do not include this prompt in your response. Please provide a direct bullet-point "
         f"analysis of the provided results. Avoid introductory or transitional sentences. Focus directly on the "
         f"content. Please do not split up your response based on the analysis methodology; you should give one set of "
-        f"takeaways.\n\n{topics_str}\n")
+        f"takeaways.\n\n{topics_str}\n"
+    )
 
     completion = openai.ChatCompletion.create(
         model=CHAT_MODEL,
@@ -93,45 +100,55 @@ async def _synthesize_topics(topics_str: str, channel: str) -> str:
             {
                 "role": "system",
                 "content": "You are a topic analysis expert, you are synthesizing the results of various topic analysis"
-                           "methods conducted on a Slack channel's message history. You write conversationally and "
-                           "never use technical terms like KMeans, LDA, clustering, or LSA. You always respond in "
-                           "markdown formatting ready for Slack. Use - for bullets, not *."
+                "methods conducted on a Slack channel's message history. You write conversationally and "
+                "never use technical terms like KMeans, LDA, clustering, or LSA. You always respond in "
+                "markdown formatting ready for Slack. Use - for bullets, not *.",
             },
-            {
-                "role": "user",
-                "content": prompt
-            }
-        ]
+            {"role": "user", "content": prompt},
+        ],
     )
     result = completion.choices[0].message.content
     print(result)
 
     # parse the message reformat it for delivery via Slack message
-    result = result.replace('\n* ', '\n- ')
-    result = result.replace('**', '*')
-    result = f'*Channel Overview: #{channel}*\n\n' + result
+    result = result.replace("\n* ", "\n- ")
+    result = result.replace("**", "*")
+    result = f"*Channel Overview: #{channel}*\n\n" + result
 
     return result
 
 
-async def analyze_topics_of_history(channel_name: str, messages, num_topics: int = 6) -> str:
+async def analyze_topics_of_history(
+    channel_name: str, messages, num_topics: int = 6
+) -> str:
     # Remove URLs
-    messages = [re.sub(r'http\S+', '', message) for message in messages]
+    messages = [re.sub(r"http\S+", "", message) for message in messages]
 
     # Remove emojis
-    messages = [re.sub(r':[^:\s]+:', '', message) for message in messages]
+    messages = [re.sub(r":[^:\s]+:", "", message) for message in messages]
 
     # Lemmatize e.g. running -> run
-    messages = [' '.join([token.lemma_ for token in nlp(message)]) for message in messages]
+    messages = [
+        " ".join([token.lemma_ for token in nlp(message)]) for message in messages
+    ]
 
     # todo: Support the ability to redact the names of channel members (to prevent any awkwardness)
 
     # Define stop words
-    stop_words = set(stopwords.words('english'))
-    for word in [channel_name, 'join', 'late', 'channel', 'team', 'like']:  # context-specific stop words
+    stop_words = set(stopwords.words("english"))
+    for word in [
+        channel_name,
+        "join",
+        "late",
+        "channel",
+        "team",
+        "like",
+    ]:  # context-specific stop words
         stop_words.add(word)
 
-    vectorizer = TfidfVectorizer(stop_words=list(stop_words), max_df=0.85, max_features=5000)
+    vectorizer = TfidfVectorizer(
+        stop_words=list(stop_words), max_df=0.85, max_features=5000
+    )
     tfidf_matrix = vectorizer.fit_transform(messages)
     terms = vectorizer.get_feature_names_out()
 
@@ -141,7 +158,11 @@ async def analyze_topics_of_history(channel_name: str, messages, num_topics: int
 
     topics_str = f"*Topic Analysis of #{channel_name}:*\n\n"
 
-    for (name, model) in [('KMeans', kmeans_results), ('LSA', lsa_results), ('LDA (w/ Gensim)', lda_results)]:
+    for name, model in [
+        ("KMeans", kmeans_results),
+        ("LSA", lsa_results),
+        ("LDA (w/ Gensim)", lda_results),
+    ]:
         if DEBUG:
             topics_str += f"\n*{name} Results:*\n"
         for topic, terms in model.items():
