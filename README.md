@@ -2,8 +2,6 @@
 
 [![Test Coverage](https://api.codeclimate.com/v1/badges/49225ada2033154b15bf/test_coverage)](https://codeclimate.com/github/meetbryce/open-source-slack-ai/test_coverage) [![Maintainability](https://api.codeclimate.com/v1/badges/49225ada2033154b15bf/maintainability)](https://codeclimate.com/github/meetbryce/open-source-slack-ai/maintainability) ![GitHub License](https://img.shields.io/github/license/meetbryce/open-source-slack-ai) [![contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](https://github.com/dwyl/esta/issues) ![X (formerly Twitter) Follow](https://img.shields.io/twitter/follow/meetbryce)
 
-[//]: # (todo: coverage tracking and badge)
-
 [//]: # (todo: youtube badge linking to walkthrough video?)
 
 This repository is a ready-to-run basic Slack AI solution you can host yourself and unlock the ability to summarize
@@ -83,12 +81,21 @@ To run the application, run the FastAPI server:
 uvicorn slack_server:fast_app --reload
 ```
 
+[//]: # (todo: improve the ngrok instructions)
+
+You'll then need to expose the server to the internet using ngrok.
+
+Run ngrok with the following command: `ngrok http 8000`
+
+Then add the ngrok URL to your Slack app's settings.
+
 [//]: # (todo: running ngrok and configuration of the Slack App)
 
 ### Customization
 
-[//]: # (todo: outline things like changing the prompt)
-TODO
+The main customization options are:
+* Channel Summary: customize the ChatGPT prompt in `topic_analysis.py`
+* Thread Summary: customize the ChatGPT prompt in `summarizer.py`
 
 ## Testing
 
@@ -113,8 +120,13 @@ Please note that if you're using a virtual environment, make sure it's activated
 
 ## Future Enhancements
 
-[//]: # (todo: outline key enhancements to both the app and the codebase)
-TODO
+- [ ] Add support for alternative and open-source LLMs
+- [ ] Add support for anonymized message summaries
+- [ ] Leverage prompt tools like Chain of Destiny
+- [ ] Add support for pulling supporting context from external sources like company knowledge bases
+- [ ] Explore caching and other performance optimizations
+- [ ] Explore sentiment analysis
+- [ ] Explore migrating to LangChain for more extensibility & control
 
 ## Contributing
 
