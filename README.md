@@ -7,7 +7,7 @@
 This repository is a ready-to-run basic Slack AI solution you can host yourself and unlock the ability to summarize
 threads and channels on demand using OpenAI (support for alternative and open source LLMs will be added if there's
 demand). The official Slack AI product looks great, but with limited access and add-on pricing, I decided to open-source
-the version I built in September 2024. Learn more
+the version I built in September 2023. Learn more
 about [how and why I built an open-source Slack AI](https://bryceyork.com/free-open-source-slack-ai/).
 
 Once up and running (instructions for the whole process are provided below), all your Slack users will be able to
