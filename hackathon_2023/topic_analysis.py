@@ -20,7 +20,7 @@ nlp = spacy.load(
 )  # `poetry add {download link}` from https://spacy.io/models/en#en_core_web_md
 OPEN_AI_TOKEN = str(os.environ.get("OPEN_AI_TOKEN")).strip()
 TEMPERATURE = float(os.environ.get("TEMPERATURE") or 0.2) + 0.1
-CHAT_MODEL = "gpt-4"
+CHAT_MODEL = "gpt-4o"  # todo: make this configurable via .env (default to gpt-4o if unset)
 DEBUG = bool(os.environ.get("DEBUG", False))
 
 if OPEN_AI_TOKEN == "":
