@@ -7,9 +7,9 @@ from hackathon_2023.utils import get_direct_message_channel_id, get_workspace_na
     get_parsed_messages
 
 
-async def handler_shortcuts(client: WebClient, is_private: bool, payload, say):
+async def handler_shortcuts(client: WebClient, is_private: bool, payload, say, user_id: str):
     channel_id = payload['channel']['id'] if payload['channel']['id'] else payload['channel_id']
-    dm_channel_id = await get_direct_message_channel_id(client)
+    dm_channel_id = await get_direct_message_channel_id(client, user_id)
     channel_id_for_say = dm_channel_id if is_private else channel_id
     await say(channel=channel_id_for_say, text='...')
 
@@ -43,7 +43,7 @@ async def handler_shortcuts(client: WebClient, is_private: bool, payload, say):
         return await say(channel=dm_channel_id, text=f"Encountered an error: {e.response['error']}")
 
 
-async def handler_tldr_slash_command(client: WebClient, ack, payload, say):
+async def handler_tldr_slash_command(client: WebClient, ack, payload, say, user_id: str):
     await ack()  # fixme: this seemingly does nothing
     text = payload.get("text", None)
     channel_name = payload["channel_name"]
@@ -53,7 +53,7 @@ async def handler_tldr_slash_command(client: WebClient, ack, payload, say):
     if text == 'public':
         await say('...')  # hack to get the bot to not show an error message but works fine
     else:
-        dm_channel_id = await get_direct_message_channel_id(client)
+        dm_channel_id = await get_direct_message_channel_id(client, user_id)
         await say(channel=dm_channel_id, text='...')  # hack to get the bot to not show an error message but works fine
 
     if text and text != 'public':
@@ -74,10 +74,10 @@ async def handler_tldr_slash_command(client: WebClient, ack, payload, say):
         return await say(channel=dm_channel_id, text=f"Encountered an error: {e.response['error']}")
 
 
-async def handler_topics_slash_command(client: WebClient, ack, payload, say):
+async def handler_topics_slash_command(client: WebClient, ack, payload, say, user_id: str):
     # START boilerplate
     await ack()
-    dm_channel_id = await get_direct_message_channel_id(client)
+    dm_channel_id = await get_direct_message_channel_id(client, user_id)
     await say(channel=dm_channel_id, text='...')
 
     history = await get_channel_history(client, payload["channel_id"])

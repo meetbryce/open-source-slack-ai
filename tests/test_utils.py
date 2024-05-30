@@ -50,14 +50,14 @@ async def test_get_channel_history(mock_client):
 @pytest.mark.asyncio
 async def test_get_direct_message_channel_id(mock_client, mock_user_client):
     mock_client.conversations_open.return_value = {"channel": {"id": "C123"}}
-    assert await utils.get_direct_message_channel_id(mock_client) == "C123"
+    assert await utils.get_direct_message_channel_id(mock_client, "U123") == "C123"
 
 
 @pytest.mark.asyncio
 async def test_get_direct_message_channel_id_with_exception(mock_client):
     mock_client.conversations_open.side_effect = SlackApiError("error", {"error": "error"})
     with pytest.raises(SlackApiError) as e_info:
-        await utils.get_direct_message_channel_id(mock_client)
+        await utils.get_direct_message_channel_id(mock_client, "U123")
         assert True
 
 

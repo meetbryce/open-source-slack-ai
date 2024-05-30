@@ -37,7 +37,7 @@ async def test_handler_shortcuts(
     get_direct_message_channel_id_mock, client, payload, say
 ):
     get_direct_message_channel_id_mock.return_value = "dm_channel_id"
-    await handler_shortcuts(client, True, payload, say)
+    await handler_shortcuts(client, True, payload, say, user_id="foo123")
     say.assert_called()
 
 
@@ -47,7 +47,7 @@ async def test_handler_tldr_slash_command_channel_history_error(
     get_direct_message_channel_id_mock, client, payload, say
 ):
     get_direct_message_channel_id_mock.return_value = "dm_channel_id"
-    await handler_tldr_slash_command(client, AsyncMock(), payload, say)
+    await handler_tldr_slash_command(client, AsyncMock(), payload, say, user_id="foo123")
     say.assert_called()
 
 
@@ -69,7 +69,7 @@ async def test_handler_topics_slash_command(
     get_channel_history_mock.return_value = ["message1", "message2", "message3"]
     get_parsed_messages_mock.return_value = "parsed_messages"
     analyze_topics_of_history_mock.return_value = "topic_overview"
-    await handler_topics_slash_command(client, AsyncMock(), payload, say)
+    await handler_topics_slash_command(client, AsyncMock(), payload, say, user_id="foo123")
     say.assert_called()
 
 
@@ -97,7 +97,7 @@ async def test_handler_shortcuts(
     summarize_slack_messages_mock.return_value = ["summary"]
 
     # Act
-    await handler_shortcuts(client, True, payload, say)
+    await handler_shortcuts(client, True, payload, say, user_id="foo123")
 
     # Assert
     say.assert_called_with(channel="dm_channel_id", text="\n".join(["summary"]))
@@ -114,5 +114,5 @@ async def test_handler_tldr_slash_command_public(
         "channel_name": "channel_name",
         "channel_id": "channel_id",
     }
-    await handler_tldr_slash_command(client, AsyncMock(), payload, say)
+    await handler_tldr_slash_command(client, AsyncMock(), payload, say, user_id="foo123")
     say.assert_called()

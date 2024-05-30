@@ -49,24 +49,24 @@ async def shutdown_event():
 
 @async_app.command("/tldr")
 async def handle_tldr_slash_command(ack, payload, say):
-    return await handler_tldr_slash_command(client, ack, payload, say)
+    return await handler_tldr_slash_command(client, ack, payload, say, user_id=payload['user_id'])
 
 
 @async_app.command("/tldr_topics")
 async def temp__handle_slash_command_topics(ack, payload, say):
-    return await handler_topics_slash_command(client, ack, payload, say)
+    return await handler_topics_slash_command(client, ack, payload, say, user_id=payload['user_id'])
 
 
 @async_app.shortcut("thread")
 async def handle_thread_shortcut(ack, payload, say):
     await ack()
-    await handler_shortcuts(client, False, payload, say)
+    await handler_shortcuts(client, False, payload, say, user_id=payload['user']['id'])
 
 
 @async_app.shortcut("thread_private")
 async def handle_thread_private_shortcut(ack, payload, say):
     await ack()
-    await handler_shortcuts(client, True, payload, say)
+    await handler_shortcuts(client, True, payload, say, user_id=payload['user']['id'])
 
 
 @app.event("message")
