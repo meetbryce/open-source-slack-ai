@@ -78,7 +78,7 @@ TODO
 To run the application, run the FastAPI server:
 
 ```bash
-uvicorn slack_server:fast_app --reload
+cd hackathon_2023 && poetry run uvicorn slack_server:fast_app --reload
 ```
 
 [//]: # (todo: improve the ngrok instructions)
