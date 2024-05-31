@@ -47,12 +47,12 @@ async def shutdown_event():
     await socket_handler.disconnect_async()
 
 
-@async_app.command("/tldr")
+@async_app.command("/tldr_extended")
 async def handle_tldr_slash_command(ack, payload, say):
     return await handler_tldr_slash_command(client, ack, payload, say, user_id=payload['user_id'])
 
 
-@async_app.command("/tldr_topics")
+@async_app.command("/tldr")
 async def temp__handle_slash_command_topics(ack, payload, say):
     return await handler_topics_slash_command(client, ack, payload, say, user_id=payload['user_id'])
 
