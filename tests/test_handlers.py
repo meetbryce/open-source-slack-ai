@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from slack_sdk import WebClient
 
-from hackathon_2023.handlers import (
+from ossai.handlers import (
     handler_shortcuts,
     handler_tldr_slash_command,
     handler_topics_slash_command,
@@ -32,7 +32,7 @@ def say():
 
 
 @pytest.mark.asyncio
-@patch("hackathon_2023.handlers.get_direct_message_channel_id")
+@patch("ossai.handlers.get_direct_message_channel_id")
 async def test_handler_shortcuts(
     get_direct_message_channel_id_mock, client, payload, say
 ):
@@ -42,7 +42,7 @@ async def test_handler_shortcuts(
 
 
 @pytest.mark.asyncio
-@patch("hackathon_2023.handlers.get_direct_message_channel_id")
+@patch("ossai.handlers.get_direct_message_channel_id")
 async def test_handler_tldr_slash_command_channel_history_error(
     get_direct_message_channel_id_mock, client, payload, say
 ):
@@ -52,10 +52,10 @@ async def test_handler_tldr_slash_command_channel_history_error(
 
 
 @pytest.mark.asyncio
-@patch("hackathon_2023.handlers.get_direct_message_channel_id")
-@patch("hackathon_2023.handlers.get_channel_history")
-@patch("hackathon_2023.handlers.get_parsed_messages")
-@patch("hackathon_2023.handlers.analyze_topics_of_history")
+@patch("ossai.handlers.get_direct_message_channel_id")
+@patch("ossai.handlers.get_channel_history")
+@patch("ossai.handlers.get_parsed_messages")
+@patch("ossai.handlers.analyze_topics_of_history")
 async def test_handler_topics_slash_command(
     analyze_topics_of_history_mock,
     get_parsed_messages_mock,
@@ -74,10 +74,10 @@ async def test_handler_topics_slash_command(
 
 
 @pytest.mark.asyncio
-@patch("hackathon_2023.handlers.get_workspace_name")
-@patch("hackathon_2023.handlers.summarize_slack_messages")
+@patch("ossai.handlers.get_workspace_name")
+@patch("ossai.handlers.summarize_slack_messages")
 @patch("slack_sdk.WebClient.conversations_replies")
-@patch("hackathon_2023.handlers.get_direct_message_channel_id")
+@patch("ossai.handlers.get_direct_message_channel_id")
 async def test_handler_shortcuts(
     get_direct_message_channel_id_mock,
     conversations_replies_mock,
@@ -104,7 +104,7 @@ async def test_handler_shortcuts(
 
 
 @pytest.mark.asyncio
-@patch("hackathon_2023.handlers.get_direct_message_channel_id")
+@patch("ossai.handlers.get_direct_message_channel_id")
 async def test_handler_tldr_slash_command_public(
     get_direct_message_channel_id_mock, client, say
 ):

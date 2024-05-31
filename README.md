@@ -78,7 +78,7 @@ TODO
 To run the application, run the FastAPI server:
 
 ```bash
-cd hackathon_2023 && poetry run uvicorn slack_server:fast_app --reload
+cd ossai && poetry run uvicorn slack_server:fast_app --reload
 ```
 
 [//]: # (todo: improve the ngrok instructions)
@@ -107,10 +107,10 @@ Follow these steps to run the tests with coverage:
 2. Run the following command to execute the tests with coverage:
 
     ```bash
-    pytest --cov=hackathon_2023 tests/
+    pytest --cov=ossai tests/
     ```
 
-   This command will run all the tests in the `tests/` directory and generate a coverage report for the `hackathon_2023`
+   This command will run all the tests in the `tests/` directory and generate a coverage report for the `ossai`
    module.
 
 3. After running the tests, you will see a report in your terminal that shows the percentage of code covered by tests

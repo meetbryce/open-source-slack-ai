@@ -4,12 +4,12 @@ from unittest.mock import patch, MagicMock
 import pytest
 from slack_sdk.errors import SlackApiError
 
-from hackathon_2023 import utils
+from ossai import utils
 
 
 @pytest.fixture
 def mock_client():
-    with patch('hackathon_2023.utils.WebClient') as mock_client:
+    with patch('ossai.utils.WebClient') as mock_client:
         def users_info_side_effect(user):
             users = {
                 "U123": {"ok": True, "user": {"real_name": "Ashley Wang", "profile": {"real_name": "Ashley Wang"}}},
@@ -140,7 +140,7 @@ def test_get_workspace_name_failure(mock_client):
 def test_main_as_script(capfd):
     # Run the utils module as a script
     with patch.dict('os.environ', {'SLACK_BOT_TOKEN': 'test_token'}):
-        runpy.run_module('hackathon_2023.utils', run_name='__main__')
+        runpy.run_module('ossai.utils', run_name='__main__')
 
     # Get the output from stdout and stderr
     out, err = capfd.readouterr()

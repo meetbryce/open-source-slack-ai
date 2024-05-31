@@ -41,13 +41,13 @@ def mock_uvicorn():
 
 
 def test_pulse(mock_app, mock_os_environ):
-    from hackathon_2023 import slack_server
+    from ossai import slack_server
     result = slack_server.pulse()
     assert result == {"status": 200, "message": "ok"}
 
 
 def test_main_loads_as_script(mock_app_advanced, mock_socket_mode_handler, mock_uvicorn, mock_os_environ, capfd):
-    runpy.run_module('hackathon_2023.slack_server', run_name='__main__')
+    runpy.run_module('ossai.slack_server', run_name='__main__')
     out, err = capfd.readouterr()
     assert err == ''
     assert mock_socket_mode_handler.called

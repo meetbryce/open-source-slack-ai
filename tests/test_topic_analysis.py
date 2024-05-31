@@ -2,7 +2,7 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
-from hackathon_2023 import topic_analysis
+from ossai import topic_analysis
 
 
 # Fixtures
@@ -66,7 +66,7 @@ async def test_lda_topics(messages, num_topics, stop_words):
     assert len(result) == num_topics
 
 
-@patch('hackathon_2023.topic_analysis.openai.ChatCompletion.create')
+@patch('ossai.topic_analysis.openai.ChatCompletion.create')
 @pytest.mark.asyncio
 async def test_synthesize_topics(mock_create):
     mock_create.return_value = MagicMock(choices=[MagicMock(message=MagicMock(content='Content'))])
@@ -74,10 +74,10 @@ async def test_synthesize_topics(mock_create):
     assert isinstance(result, str)
 
 
-@patch('hackathon_2023.topic_analysis._synthesize_topics')
-@patch('hackathon_2023.topic_analysis._lda_topics')
-@patch('hackathon_2023.topic_analysis._lsa_topics')
-@patch('hackathon_2023.topic_analysis._kmeans_topics')
+@patch('ossai.topic_analysis._synthesize_topics')
+@patch('ossai.topic_analysis._lda_topics')
+@patch('ossai.topic_analysis._lsa_topics')
+@patch('ossai.topic_analysis._kmeans_topics')
 @pytest.mark.asyncio
 async def test_analyze_topics_of_history(mock_kmeans, mock_lsa, mock_lda, mock_synthesize, messages, num_topics):
     mock_kmeans.return_value = {'topic1': ['term1', 'term2', 'term3']}

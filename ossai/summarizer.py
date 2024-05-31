@@ -4,7 +4,7 @@ import re
 import openai
 from dotenv import load_dotenv
 
-from hackathon_2023.utils import get_parsed_messages
+from ossai.utils import get_parsed_messages
 
 load_dotenv()
 

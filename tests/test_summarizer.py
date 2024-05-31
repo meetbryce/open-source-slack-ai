@@ -4,8 +4,8 @@ from unittest.mock import patch, MagicMock
 import pytest
 from openai.error import RateLimitError
 
-from hackathon_2023 import summarizer
-from hackathon_2023.summarizer import get_config
+from ossai import summarizer
+from ossai.summarizer import get_config
 
 
 def test_summarize():
@@ -29,8 +29,8 @@ def test_estimate_openai_chat_token_count():
 
 
 def test_split_messages_by_token_count():
-    with patch('hackathon_2023.summarizer.get_parsed_messages') as mock_get_parsed_messages, \
-            patch('hackathon_2023.summarizer.MAX_BODY_TOKENS', new=3):
+    with patch('ossai.summarizer.get_parsed_messages') as mock_get_parsed_messages, \
+            patch('ossai.summarizer.MAX_BODY_TOKENS', new=3):
         mock_get_parsed_messages.return_value = ['Hello', 'how', 'are', 'you']
         messages = [{'text': 'Hello'}, {'text': 'how'}, {'text': 'are'}, {'text': 'you'}]
         result = summarizer.split_messages_by_token_count(None, messages)
@@ -52,10 +52,10 @@ def test_summarize_slack_messages():
     context_message = "Context message"
 
     # Mock the split_messages_by_token_count function to return a fixed response
-    with patch('hackathon_2023.summarizer.split_messages_by_token_count',
+    with patch('ossai.summarizer.split_messages_by_token_count',
                return_value=[['Hello', 'how', 'are', 'you']]) as mock_split:
         # Mock the summarize function to return a fixed response
-        with patch('hackathon_2023.summarizer.summarize', return_value='Summarized text') as mock_summarize:
+        with patch('ossai.summarizer.summarize', return_value='Summarized text') as mock_summarize:
             result = summarizer.summarize_slack_messages(mock_client, mock_messages, context_message)
             # Check that the split_messages_by_token_count function was called with the correct arguments
             mock_split.assert_called_once_with(mock_client, mock_messages)
@@ -72,10 +72,10 @@ def test_summarize_slack_messages_rate_limit_error():
     context_message = "Context message"
 
     # Mock the split_messages_by_token_count function to return a fixed response
-    with patch('hackathon_2023.summarizer.split_messages_by_token_count',
+    with patch('ossai.summarizer.split_messages_by_token_count',
                return_value=[['Hello', 'how', 'are', 'you']]) as mock_split:
         # Mock the summarize function to raise a RateLimitError
-        with patch('hackathon_2023.summarizer.summarize',
+        with patch('ossai.summarizer.summarize',
                    side_effect=RateLimitError('Rate limit exceeded')) as mock_summarize:
             result = summarizer.summarize_slack_messages(mock_client, mock_messages, context_message)
             # Check that the result is as expected
@@ -85,7 +85,7 @@ def test_summarize_slack_messages_rate_limit_error():
 def test_main_as_script(capfd):
     # Run the utils module as a script
     with patch.dict('os.environ', {'SLACK_BOT_TOKEN': 'test_token'}):
-        runpy.run_module('hackathon_2023.summarizer', run_name='__main__')
+        runpy.run_module('ossai.summarizer', run_name='__main__')
 
     # Get the output from stdout and stderr
     out, err = capfd.readouterr()

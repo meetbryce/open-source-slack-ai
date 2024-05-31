@@ -10,7 +10,7 @@ from slack_bolt.async_app import AsyncApp
 from slack_sdk import WebClient
 from starlette.requests import Request as StarletteRequest
 
-from hackathon_2023.handlers import (
+from ossai.handlers import (
     handler_shortcuts,
     handler_tldr_slash_command,
     handler_topics_slash_command,
