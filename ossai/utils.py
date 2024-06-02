@@ -124,10 +124,10 @@ def get_workspace_name(client: WebClient):
             return response["team"]["name"]
         else:
             print(f"Error retrieving workspace name: {response['error']}")
-            return ""
+            return os.getenv("WORKSPACE_NAME_FALLBACK", "")
     except SlackApiError as e:
         print(f"Error retrieving workspace name: {e.response['error']}")
-        return ""  # None
+        return os.getenv("WORKSPACE_NAME_FALLBACK", "")  # None
 
 
 def main():
