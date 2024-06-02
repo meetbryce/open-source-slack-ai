@@ -120,13 +120,15 @@ Please note that if you're using a virtual environment, make sure it's activated
 
 ## Future Enhancements
 
+- [ ] Move to LangChain & LangSmith for extensibility, tracing, & control
+- [ ] Implement evals suite to complement unit tests
 - [ ] Add support for alternative and open-source LLMs
+- [ ] Explore workflow for collecting data & fine-tuning models for cost reduction
 - [ ] Add support for anonymized message summaries
 - [ ] Leverage prompt tools like Chain of Destiny
 - [ ] Add support for pulling supporting context from external sources like company knowledge bases
 - [ ] Explore caching and other performance optimizations
 - [ ] Explore sentiment analysis
-- [ ] Explore migrating to LangChain for more extensibility & control
 
 ## Contributing
 
