@@ -4,7 +4,7 @@ from slack_sdk.errors import SlackApiError
 from ossai.summarizer import summarize_slack_messages
 from ossai.topic_analysis import analyze_topics_of_history
 from ossai.utils import get_direct_message_channel_id, get_workspace_name, get_channel_history, \
-    get_parsed_messages
+    get_parsed_messages, get_bot_id
 
 
 async def handler_shortcuts(client: WebClient, is_private: bool, payload, say, user_id: str):
@@ -37,9 +37,13 @@ async def handler_shortcuts(client: WebClient, is_private: bool, payload, say, u
         else:
             return await say(channel=channel_id_for_say, text="Sorry, couldn't fetch the message and its replies.")
     except SlackApiError as e:
-        if e.response['error'] == 'channel_not_found':
+        if e.response['error'] == 'channel_not_found' or e.response['error'] == 'not_in_channel':
+            bot_id = await get_bot_id(client)
+            bot_info = client.bots_info(bot=bot_id)
+            print(bot_info)
+            bot_name = bot_info['bot']['name']
             return await say(channel=dm_channel_id,
-                             text="Sorry, couldn't find the channel. Have you added 'me' to the channel?")
+                             text=f"Sorry, couldn't find the channel. Have you added `@{bot_name}` to the channel?")
         return await say(channel=dm_channel_id, text=f"Encountered an error: {e.response['error']}")
 
 
