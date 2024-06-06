@@ -35,6 +35,9 @@ jobs:
         uses: knowsuchagency/poetry-install@v2
         env:
           POETRY_VIRTUALENVS_CREATE: false
+      - name: Download Spacy Model
+        run: |
+          python -m spacy download en_core_web_md
       - name: Print PATH and Git location
         run: |
           echo $PATH

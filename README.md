@@ -59,7 +59,13 @@ Ensure you have the following preconfigured or installed on your local developme
 poetry install
 ```
 
-4. Create a `.env` file in the root directory of the project, and fill it with your API keys and tokens. Use
+4. Install the dictionary model
+
+```bash
+poetry run python -m spacy download en_core_web_md
+```
+
+5. Create a `.env` file in the root directory of the project, and fill it with your API keys and tokens. Use
    the `example.env` file as a template.
 
 ```bash
