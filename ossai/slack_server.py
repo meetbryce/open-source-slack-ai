@@ -2,13 +2,9 @@ import os
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request
-from slack_bolt import App
-from slack_bolt.adapter.socket_mode import SocketModeHandler
 from slack_bolt.adapter.socket_mode.aiohttp import AsyncSocketModeHandler
-from slack_bolt.adapter.starlette import SlackRequestHandler
 from slack_bolt.async_app import AsyncApp
 from slack_sdk import WebClient
-from starlette.requests import Request as StarletteRequest
 
 from ossai.handlers import (
     handler_shortcuts,
@@ -17,10 +13,8 @@ from ossai.handlers import (
 )
 
 load_dotenv()
-app = App(token=os.environ["SLACK_BOT_TOKEN"])
 async_app = AsyncApp(token=os.environ["SLACK_BOT_TOKEN"])
 fast_app = FastAPI()
-handler = SlackRequestHandler(app)
 client = WebClient(token=os.environ["SLACK_BOT_TOKEN"])
 socket_handler = AsyncSocketModeHandler(async_app, os.environ["SLACK_APP_TOKEN"])
 
@@ -33,8 +27,12 @@ def pulse():
 
 @fast_app.post("/slack/events")
 async def slack_events(request: Request):
-    starlette_request = StarletteRequest(request.scope, request.receive)
-    return await handler.handle(starlette_request)
+    event = await request.json()
+
+    if event.get('type') == 'url_verification':
+        return {'challenge': event['challenge']}
+    
+    return {"status": 401, "message": "Unauthorized"}
 
 
 @fast_app.on_event("startup")
@@ -69,16 +67,7 @@ async def handle_thread_private_shortcut(ack, payload, say):
     await handler_shortcuts(client, True, payload, say, user_id=payload['user']['id'])
 
 
-@app.event("message")
-async def handle_message_events(body, logger):
-    print(f"message {body=}")
-    logger.info(body)
-
-
 if __name__ == "__main__":
     import uvicorn
-
-    socket_mode_handler = SocketModeHandler(app, os.environ["SLACK_APP_TOKEN"])
-    socket_mode_handler.start()
 
     uvicorn.run(fast_app, host="0.0.0.0", port=8000)
