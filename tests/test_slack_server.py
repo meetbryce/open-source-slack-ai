@@ -29,12 +29,6 @@ def mock_os_environ():
 
 
 @pytest.fixture
-def mock_socket_mode_handler():
-    with patch.object(SocketModeHandler, 'start', return_value=None) as mock:
-        yield mock
-
-
-@pytest.fixture
 def mock_uvicorn():
     with patch('uvicorn.run', return_value=None) as mock:
         yield mock
@@ -46,9 +40,8 @@ def test_pulse(mock_app, mock_os_environ):
     assert result == {"status": 200, "message": "ok"}
 
 
-def test_main_loads_as_script(mock_app_advanced, mock_socket_mode_handler, mock_uvicorn, mock_os_environ, capfd):
+def test_main_loads_as_script(mock_app_advanced, mock_uvicorn, mock_os_environ, capfd):
     runpy.run_module('ossai.slack_server', run_name='__main__')
     out, err = capfd.readouterr()
     assert err == ''
-    assert mock_socket_mode_handler.called
     assert mock_uvicorn.called
