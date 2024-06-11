@@ -13,19 +13,19 @@ from ossai.handlers import (
 )
 
 load_dotenv()
+app = FastAPI()
 async_app = AsyncApp(token=os.environ["SLACK_BOT_TOKEN"])
-fast_app = FastAPI()
 client = WebClient(token=os.environ["SLACK_BOT_TOKEN"])
 socket_handler = AsyncSocketModeHandler(async_app, os.environ["SLACK_APP_TOKEN"])
 
 
-@fast_app.get("/pulse")
+@app.get("/pulse")
 def pulse():
     # todo: add some sort of health check for the websockets connection (or check this one when theres a sockets issue)
     return {"status": 200, "message": "ok"}
 
 
-@fast_app.post("/slack/events")
+@app.post("/slack/events")
 async def slack_events(request: Request):
     event = await request.json()
 
@@ -35,12 +35,12 @@ async def slack_events(request: Request):
     return {"status": 401, "message": "Unauthorized"}
 
 
-@fast_app.on_event("startup")
+@app.on_event("startup")
 async def startup():
     await socket_handler.connect_async()  # todo: this is not ideal for # of workers > 1.
 
 
-@fast_app.on_event("shutdown")
+@app.on_event("shutdown")
 async def shutdown_event():
     await socket_handler.disconnect_async()
 
@@ -70,4 +70,4 @@ async def handle_thread_private_shortcut(ack, payload, say):
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(fast_app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -84,7 +84,7 @@ TODO
 To run the application, run the FastAPI server:
 
 ```bash
-cd ossai && poetry run uvicorn slack_server:fast_app --reload
+cd ossai && poetry run uvicorn slack_server:app --reload
 ```
 
 [//]: # (todo: improve the ngrok instructions)
