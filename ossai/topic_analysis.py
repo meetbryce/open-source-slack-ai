@@ -15,9 +15,15 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 
 load_dotenv()
 nltk.download("stopwords")
-nlp = spacy.load(
-    "en_core_web_md"
-)  # `poetry add {download link}` from https://spacy.io/models/en#en_core_web_md
+try:
+    nlp = spacy.load(
+        "en_core_web_md"
+    )  # `poetry add {download link}` from https://spacy.io/models/en#en_core_web_md
+except:
+    print("Downloading language model for the spaCy POS tagger (don't worry, this will only happen once)")
+    from spacy.cli import download
+    download('en_core_web_md')
+    nlp = spacy.load('en_core_web_md')
 OPEN_AI_TOKEN = str(os.environ.get("OPEN_AI_TOKEN")).strip()
 TEMPERATURE = float(os.environ.get("TEMPERATURE") or 0.2) + 0.1
 CHAT_MODEL = "gpt-4o"  # todo: make this configurable via .env (default to gpt-4o if unset)
