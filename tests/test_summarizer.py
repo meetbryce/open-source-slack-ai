@@ -2,25 +2,38 @@ import runpy
 from unittest.mock import patch, MagicMock
 
 import pytest
-from openai.error import RateLimitError
+from openai import RateLimitError
 
 from ossai import summarizer
-from ossai.summarizer import get_config
+from ossai.summarizer import get_config, summarize
 
 
-def test_summarize():
-    with patch('openai.ChatCompletion.create') as mock_create:
-        mock_create.return_value = {
-            "choices": [
-                {
-                    "message": {
-                        'content': 'Summarized text'
-                    }
-                }
-            ]
-        }
-        result = summarizer.summarize("Alice: Hi\nBob: Hello\nAlice: How are you?\nBob: I'm doing well, thanks.")
-        assert result == 'Summarized text'
+# def test_summarize():
+#     with patch('openai.ChatCompletion.create') as mock_create:
+#         mock_create.return_value = {
+#             "choices": [
+#                 {
+#                     "message": {
+#                         'content': 'Summarized text'
+#                     }
+#                 }
+#             ]
+#         }
+#         result = summarizer.summarize("Alice: Hi\nBob: Hello\nAlice: How are you?\nBob: I'm doing well, thanks.")
+#         assert result == 'Summarized text'
+
+
+def test_summarize_langchain():
+    text = """\
+    Bob: How are you?
+    Jane: It's been so long. I've been great. I bought a house, started a business, and sold my left kidney.
+    Bob: Well isn't that just wonderful. Did you mean to sell your kidney? I quite like having 2.
+    Jane: I figured I had a spare and really wanted a Tesla. So, yeah. 
+    """
+    result = summarize(text)
+    assert "kidney" in result
+    assert "Bob" in result
+    assert "Jane" in result
 
 
 def test_estimate_openai_chat_token_count():
@@ -51,16 +64,42 @@ def test_summarize_slack_messages():
     mock_messages = [{'text': 'Hello'}, {'text': 'how'}, {'text': 'are'}, {'text': 'you'}]
     context_message = "Context message"
 
+    # Mock the conversations_info method to return a fixed response
+    mock_client.conversations_info.return_value = {'channel': {'is_private': False}}
+
     # Mock the split_messages_by_token_count function to return a fixed response
     with patch('ossai.summarizer.split_messages_by_token_count',
                return_value=[['Hello', 'how', 'are', 'you']]) as mock_split:
         # Mock the summarize function to return a fixed response
         with patch('ossai.summarizer.summarize', return_value='Summarized text') as mock_summarize:
-            result = summarizer.summarize_slack_messages(mock_client, mock_messages, context_message)
+            result = summarizer.summarize_slack_messages(mock_client, mock_messages, context_message, channel_id='C1234567890')
             # Check that the split_messages_by_token_count function was called with the correct arguments
             mock_split.assert_called_once_with(mock_client, mock_messages)
             # Check that the summarize function was called with the correct arguments
-            mock_summarize.assert_called_with("\n".join(['Hello', 'how', 'are', 'you']), summarizer.LANGUAGE)
+            mock_summarize.assert_called_with("\n".join(['Hello', 'how', 'are', 'you']), summarizer.LANGUAGE, is_private=False)
+            # Check that the result is as expected
+            assert result == ['Context message', 'Summarized text']
+
+
+def test_summarize_slack_messages_private_channel():
+    # Mock the client and messages
+    mock_client = MagicMock()
+    mock_messages = [{'text': 'Hello'}, {'text': 'how'}, {'text': 'are'}, {'text': 'you'}]
+    context_message = "Context message"
+
+    # Mock the conversations_info method to return a fixed response
+    mock_client.conversations_info.return_value = {'channel': {'is_private': True}}
+
+    # Mock the split_messages_by_token_count function to return a fixed response
+    with patch('ossai.summarizer.split_messages_by_token_count',
+               return_value=[['Hello', 'how', 'are', 'you']]) as mock_split:
+        # Mock the summarize function to return a fixed response
+        with patch('ossai.summarizer.summarize', return_value='Summarized text') as mock_summarize:
+            result = summarizer.summarize_slack_messages(mock_client, mock_messages, context_message, channel_id='C1234567890')
+            # Check that the split_messages_by_token_count function was called with the correct arguments
+            mock_split.assert_called_once_with(mock_client, mock_messages)
+            # Check that the summarize function was called with the correct arguments
+            mock_summarize.assert_called_with("\n".join(['Hello', 'how', 'are', 'you']), summarizer.LANGUAGE, is_private=True)
             # Check that the result is as expected
             assert result == ['Context message', 'Summarized text']
 
@@ -76,8 +115,8 @@ def test_summarize_slack_messages_rate_limit_error():
                return_value=[['Hello', 'how', 'are', 'you']]) as mock_split:
         # Mock the summarize function to raise a RateLimitError
         with patch('ossai.summarizer.summarize',
-                   side_effect=RateLimitError('Rate limit exceeded')) as mock_summarize:
-            result = summarizer.summarize_slack_messages(mock_client, mock_messages, context_message)
+                   side_effect=RateLimitError('Rate limit exceeded', response=MagicMock(), body={})) as mock_summarize:
+            result = summarizer.summarize_slack_messages(mock_client, mock_messages, context_message, channel_id='C1234567890')
             # Check that the result is as expected
             assert result == ["Sorry, OpenAI rate limit exceeded..."]
 

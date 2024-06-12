@@ -1,10 +1,13 @@
 import os
 import re
-
 import openai
-from dotenv import load_dotenv
 
-from ossai.utils import get_parsed_messages
+from dotenv import load_dotenv
+from langchain_openai import ChatOpenAI
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.prompts import ChatPromptTemplate
+
+from ossai.utils import get_parsed_messages, get_langsmith_config
 
 load_dotenv()
 
@@ -34,13 +37,21 @@ def configure_openai_api():
     openai.api_key = config["open_ai_token"]
 
 
-def summarize(text: str, language: str = LANGUAGE):
+def summarize(
+        text: str, 
+        feature_name: str, 
+        user: str, 
+        channel: str, 
+        language: str = LANGUAGE, 
+        is_private: bool = False, 
+    ):
     """
     Summarize a chat log in bullet points, in the specified language.
 
     Args:
         text (str): The chat log to summarize, in the format "Speaker: Message" separated by line breaks.
         language (str, optional): The language to use for the summary. Defaults to LANGUAGE.
+        is_private (bool, optional): Whether the chat log is private. Defaults to False.
 
     Returns:
         str: The summarized chat log in bullet point format.
@@ -50,44 +61,52 @@ def summarize(text: str, language: str = LANGUAGE):
         '- Alice greeted Bob.\n- Bob responded with a greeting.\n- Alice asked how Bob was doing.
         \n- Bob replied that he was doing well.'
     """
+
     configure_openai_api()  # Ensure API key is configured just in time
+
+    system_msg = """\
+    You're a highly capable summarization expert who provides succinct summaries of Slack chat logs.
+    The chat log format consists of one line per message in the format "Speaker: Message".
+    The chat log lists the most recent messages first. Place more emphasis on recent messages.
+    The `\\n` within the message represents a line break.
+    Consider your summary as a whole and avoid repeating yourself unnecessarily.
+    The user understands {language} only.
+    So, The assistant needs to speak in {language}.
+    """
+
+    human_msg = """\
+    Please summarize the following chat log to a flat markdown formatted bullet list.
+    Do not write a line by line summary. Instead, summarize the overall conversation.
+    Do not include greeting/salutation/polite expressions in summary.
+    Make the summary easy to read while maintaining a conversational tone and retaining meaning.
+    Write in conversational English.
+
+    {text}
+    """
+
     config = get_config()
-    response = openai.ChatCompletion.create(
-        model=config["chat_model"],
-        temperature=config["temperature"],
-        messages=[
-            {
-                "role": "system",
-                "content": "\n".join(
-                    [
-                        "You're a highly capable summarization expert who provides succinct summaries of Slack chat logs.",
-                        'The chat log format consists of one line per message in the format "Speaker: Message".',
-                        "The chat log lists the most recent messages first. Place more emphasis on recent messages.",
-                        "The `\\n` within the message represents a line break.",
-                        "Consider your summary as a whole and avoid repeating yourself unnecessarily.",
-                        f"The user understands {language} only.",
-                        f"So, The assistant needs to speak in {language}.",
-                    ]
-                ),
-            },
-            {
-                "role": "user",
-                "content": "\n".join(
-                    [
-                        f"Please summarize the following chat log to a flat markdown formatted bullet list.",
-                        "Do not write a line by line summary. Instead, summarize the overall conversation.",
-                        "Do not include greeting/salutation/polite expressions in summary.",
-                        "Make the summary easy to read while maintaining a conversational tone and retaining meaning."
-                        f"Write in conversational {language}.",
-                        "",
-                        text,
-                    ]
-                ),
-            },
-        ],
+    model = ChatOpenAI(model=config["chat_model"], temperature=config["temperature"])
+    
+    prompt_template = ChatPromptTemplate.from_messages(
+        [('system', system_msg), ('user', human_msg)]
     )
 
-    return response["choices"][0]["message"]["content"]
+    parser = StrOutputParser()
+    chain = prompt_template | model | parser 
+
+    # todo: add metadata such as user, channel, department, is_private, public vs DM, thread vs channel, etc.
+
+    # Attach the context to the chain invocation
+    langsmith_config = get_langsmith_config(
+        feature_name=feature_name,
+        user=user,
+        channel=channel,
+        is_private=is_private,
+    )
+    print(f"{langsmith_config=}")
+    result = chain.invoke({'text': text, 'language': language}, config=langsmith_config)
+    return result
+
 
 
 def estimate_openai_chat_token_count(text: str) -> int:
@@ -104,6 +123,7 @@ def estimate_openai_chat_token_count(text: str) -> int:
         >>> estimate_openai_chat_token_count("Hello, how are you?")
         7
     """
+    # todo: replace with `tiktoken`
     # Split the text into words and count the number of characters of each type
     pattern = re.compile(
         r"""(
@@ -162,17 +182,55 @@ def split_messages_by_token_count(client, messages: list[dict]) -> list[list[str
     return result
 
 
-def summarize_slack_messages(client, messages: list, context_message: str) -> list:
+def summarize_slack_messages(
+        client, 
+        messages: list, 
+        context_message: str, 
+        channel_id: str,
+        feature_name: str, 
+        user: str, 
+    ) -> list:
+    """
+    Summarize a list of slack messages.
+
+    This function takes a list of slack messages, a context message, and the channel ID, splits the 
+    messages into sublists based on token count, and then summarizes each sublist. 
+    The summary is returned as a list, with the context message as the first element.
+
+    Args:
+        client: The slack client.
+        messages (list): A list of slack messages to be summarized.
+        context_message (str): A context message that will be the first element in the returned list.
+        channel_id (str): The ID of the Slack channel.
+
+    Returns:
+        list: A list of summary text, with the context message as the first element.
+    """
+    # Determine if the channel is private
+    try:
+        channel_info = client.conversations_info(channel=channel_id)
+        channel_name = channel_info['channel']['name']
+        is_private = channel_info['channel']['is_private']
+    except Exception as e:
+        print(f"Error getting channel info for is_private, defaulting to private: {e}")
+        channel_name = "unknown"
+        is_private = True    
+
     message_splits = split_messages_by_token_count(client, messages)
     print(f"{len(message_splits)=}")
-    # return ['SHORT CIRCUITED']
     result_text = [context_message]
 
-    # fixme: if split_messages_by_token_count > X, summarize the summary with GPT4
     for message_split in message_splits:
         try:
-            text = summarize("\n".join(message_split), LANGUAGE)
-        except openai.error.RateLimitError as e:
+            text = summarize(
+                "\n".join(message_split), 
+                feature_name=feature_name, 
+                user=user, 
+                channel=channel_name, 
+                language=LANGUAGE, 
+                is_private=is_private,
+            )
+        except openai.RateLimitError as e:
             print(e)
             return [f"Sorry, OpenAI rate limit exceeded..."]
         result_text.append(text)

@@ -1,5 +1,5 @@
 import runpy
-from unittest.mock import patch, MagicMock
+from unittest.mock import ANY, patch, MagicMock
 
 import pytest
 from slack_sdk.errors import SlackApiError
@@ -12,8 +12,28 @@ def mock_client():
     with patch('ossai.utils.WebClient') as mock_client:
         def users_info_side_effect(user):
             users = {
-                "U123": {"ok": True, "user": {"real_name": "Ashley Wang", "profile": {"real_name": "Ashley Wang"}}},
-                "U456": {"ok": True, "user": {"real_name": "Taylor Garcia", "profile": {"real_name": "Taylor Garcia"}}},
+                "U123": {
+                    "ok": True, 
+                    "user": {
+                        "real_name": "Ashley Wang", 
+                        "name": "ashley.wang", 
+                        "profile": {
+                            "real_name": "Ashley Wang",
+                            "title": 'CEO'
+                        }
+                    }
+                },
+                "U456": {
+                    "ok": True, 
+                    "user": {
+                        "real_name": "Taylor Garcia", 
+                        "name": "taylor.garcia",
+                        "profile": {
+                            "real_name": "Taylor Garcia",
+                            "title": 'CTO'
+                        }
+                    }
+                },
             }
             return users.get(user, {"ok": False})
 
@@ -125,16 +145,18 @@ def test_get_workspace_name(mock_client):
 
 
 def test_get_workspace_name_exception(mock_client):
-    mock_client.team_info.side_effect = SlackApiError("error", {"error": "error"})
-    result = utils.get_workspace_name(mock_client)
-    assert result == ""
+    with patch.dict('os.environ', {'WORKSPACE_NAME_FALLBACK': ''}):
+        mock_client.team_info.side_effect = SlackApiError("error", {"error": "error"})
+        result = utils.get_workspace_name(mock_client)
+        assert result == ""
 
 
 def test_get_workspace_name_failure(mock_client):
-    mock_client.team_info.return_value = {"ok": False, "error": "team_info error"}
-    result = utils.get_workspace_name(mock_client)
-    mock_client.team_info.assert_called_once()
-    assert result == ""
+    with patch.dict('os.environ', {'WORKSPACE_NAME_FALLBACK': ''}):
+        mock_client.team_info.return_value = {"ok": False, "error": "team_info error"}
+        result = utils.get_workspace_name(mock_client)
+        mock_client.team_info.assert_called_once()
+        assert result == ""
 
 
 def test_main_as_script(capfd):
@@ -147,3 +169,39 @@ def test_main_as_script(capfd):
 
     assert err == ''
     assert 'DEBUGGING' in out
+
+
+def test_get_langsmith_config_happy_path():
+    feature_name = "feature_test"
+    user = {"name": "testuser", "title": "developer"}
+    channel = "test_channel"
+    is_private = False
+
+    expected_config = {
+        "run_id": ANY,  # We expect this to be a UUID, so we use ANY
+        "metadata": {
+            "is_private": is_private,
+            "user_name": "testuser",
+            "user_title": "developer",
+            "channel": channel,
+        },
+        "tags": [feature_name],
+        "callbacks": [ANY]  # The callback is an instance of CustomLangChainTracer, so we use ANY
+    }
+
+    # Call the function with the test inputs
+    config = utils.get_langsmith_config(feature_name, user, channel, is_private)
+
+    # Check that the returned config matches the expected config
+    assert config["metadata"] == expected_config["metadata"]
+    assert config["tags"] == expected_config["tags"]
+    assert isinstance(config["callbacks"][0], utils.CustomLangChainTracer)
+    assert isinstance(config["run_id"], str)  # run_id should be a string UUID
+
+
+@pytest.mark.asyncio
+async def test_get_user_context_success(mock_client):
+    result = await utils.get_user_context(mock_client, 'U123')
+
+    mock_client.users_info.assert_called_once_with(user='U123')
+    assert result == {"name": "ashley.wang", "title": "CEO"}

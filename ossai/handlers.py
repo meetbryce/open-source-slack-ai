@@ -4,7 +4,7 @@ from slack_sdk.errors import SlackApiError
 from ossai.summarizer import summarize_slack_messages
 from ossai.topic_analysis import analyze_topics_of_history
 from ossai.utils import get_direct_message_channel_id, get_workspace_name, get_channel_history, \
-    get_parsed_messages, get_bot_id
+    get_parsed_messages, get_bot_id, get_user_context
 
 
 async def handler_shortcuts(client: WebClient, is_private: bool, payload, say, user_id: str):
@@ -27,7 +27,8 @@ async def handler_shortcuts(client: WebClient, is_private: bool, payload, say, u
             thread_hint = thread_hint if len(thread_hint) <= 120 else thread_hint[:120] + '...'
 
             context_message = f'*Summary of <{link}|{"thread" if len(messages) > 1 else "message"}>:*\n>{thread_hint}\n'
-            summary = summarize_slack_messages(client, messages, context_message)
+            user = await get_user_context(client, user_id)
+            summary = summarize_slack_messages(client, messages, context_message, channel_id, feature_name="summarize_thread", user=user)
             try:
                 return await say(channel=channel_id_for_say, text='\n'.join(summary))
             except SlackApiError as e:
@@ -65,8 +66,10 @@ async def handler_tldr_slash_command(client: WebClient, ack, payload, say, user_
     try:
         history = await get_channel_history(client, channel_id)
         history.reverse()
+        user = await get_user_context(client, user_id)
         summary = summarize_slack_messages(client, history,
-                                           f'*Summary of #{channel_name}* (last {len(history)} messages)\n')
+                                           f'*Summary of #{channel_name}* (last {len(history)} messages)\n',
+                                           channel_id, feature_name="summarize_channel_messages", user=user)
 
         if text == 'public':
             return await say(text='\n'.join(summary))

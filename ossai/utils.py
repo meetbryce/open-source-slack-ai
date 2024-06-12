@@ -1,12 +1,28 @@
 import os
 import re
+import uuid
 
 from dotenv import load_dotenv
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
+from langchain.callbacks.tracers import LangChainTracer
 
 load_dotenv()
 _id_name_cache = {}
+
+
+class CustomLangChainTracer(LangChainTracer):
+    def __init__(self, is_private=False, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.is_private = is_private
+
+    def handleText(self, text, runId):
+        if not self.is_private:
+            print('passing text')
+            super().handleText(text, runId)
+        else:
+            print('passing no text')
+            super().handleText('', runId)
 
 
 async def get_bot_id(client) -> str:
@@ -44,6 +60,24 @@ async def get_direct_message_channel_id(client: WebClient, user_id: str) -> str:
     except SlackApiError as e:
         print(f"Error fetching bot DM channel ID: {e.response['error']}")
         raise e
+    
+
+def get_langsmith_config(feature_name:str, user:dict, channel:str, is_private=False):
+    run_id = str(uuid.uuid4())
+    tracer = CustomLangChainTracer(is_private=is_private)  # FIXME: this doesn't add privacy like it should
+    
+    return {
+        "run_id": run_id,
+        "metadata": {
+            "is_private": is_private,
+            **({"user_name": user.get('name')} if 'name' in user else {}),
+            **({"user_title": user.get('title')} if 'title' in user else {}),
+            "channel": channel,
+        },
+        "tags": [feature_name],
+        "callbacks": [tracer]
+    }
+
 
 
 def get_name_from_id(client: WebClient, user_or_bot_id: str, is_bot=False) -> str:
@@ -105,6 +139,22 @@ def get_parsed_messages(client, messages, with_names=True):
         return f'{name}: {parsed_message}'
 
     return [parse_message(message) for message in messages]
+
+
+async def get_user_context(client: WebClient, user_id: str) -> dict:
+    """
+    Get the username and title for the given user ID. 
+    """
+    try:
+        user_info = client.users_info(user=user_id)
+        print(user_info)
+        if user_info['ok']:
+            name = user_info['user']['name']
+            title = user_info['user']['profile']['title']
+            return {'name': name, 'title': title}
+    except SlackApiError as e:
+        print(f"Failed to fetch username: {e}")
+        return {}
 
 
 def get_workspace_name(client: WebClient):
