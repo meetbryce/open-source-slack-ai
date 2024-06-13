@@ -126,7 +126,8 @@ Please note that if you're using a virtual environment, make sure it's activated
 
 ## Future Enhancements
 
-- [ ] Move to LangChain & LangSmith for extensibility, tracing, & control
+- [x] Move to LangChain & LangSmith for extensibility, tracing, & control
+- [ ] Add slack app setup details and sample app manifest to README
 - [ ] Implement evals suite to complement unit tests
 - [ ] Add support for alternative and open-source LLMs
 - [ ] Explore workflow for collecting data & fine-tuning models for cost reduction
