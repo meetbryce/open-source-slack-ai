@@ -205,3 +205,5 @@ async def test_get_user_context_success(mock_client):
 
     mock_client.users_info.assert_called_once_with(user='U123')
     assert result == {"name": "ashley.wang", "title": "CEO"}
+
+# todo: test get_llm_config()

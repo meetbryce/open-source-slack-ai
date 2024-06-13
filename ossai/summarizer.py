@@ -7,42 +7,15 @@ from langchain_openai import ChatOpenAI
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 
-from ossai.utils import get_parsed_messages, get_langsmith_config
+from ossai.utils import get_parsed_messages, get_langsmith_config, get_llm_config
 
 load_dotenv()
-
-LANGUAGE = "English"
-MAX_BODY_TOKENS = 3000
-
-
-# Refactored configuration retrieval
-def get_config():
-    chat_model = os.getenv("CHAT_MODEL", "gpt-3.5-turbo").strip()
-    temperature = float(os.getenv("TEMPERATURE", 0.2))
-    open_ai_token = os.getenv("OPEN_AI_TOKEN", "").strip()
-    debug = bool(os.environ.get("DEBUG", False))
-
-    if not open_ai_token:
-        raise ValueError("OPEN_AI_TOKEN is not set in .env file")
-    return {
-        "chat_model": chat_model,
-        "temperature": temperature,
-        "open_ai_token": open_ai_token,
-        "debug": debug,
-    }
-
-
-def configure_openai_api():
-    config = get_config()
-    openai.api_key = config["open_ai_token"]
-
 
 def summarize(
         text: str, 
         feature_name: str, 
         user: str, 
-        channel: str, 
-        language: str = LANGUAGE, 
+        channel: str,  
         is_private: bool = False, 
     ):
     """
@@ -61,8 +34,6 @@ def summarize(
         '- Alice greeted Bob.\n- Bob responded with a greeting.\n- Alice asked how Bob was doing.
         \n- Bob replied that he was doing well.'
     """
-
-    configure_openai_api()  # Ensure API key is configured just in time
 
     system_msg = """\
     You're a highly capable summarization expert who provides succinct summaries of Slack chat logs.
@@ -84,7 +55,7 @@ def summarize(
     {text}
     """
 
-    config = get_config()
+    config = get_llm_config()
     model = ChatOpenAI(model=config["chat_model"], temperature=config["temperature"])
     
     prompt_template = ChatPromptTemplate.from_messages(
@@ -104,7 +75,7 @@ def summarize(
         is_private=is_private,
     )
     print(f"{langsmith_config=}")
-    result = chain.invoke({'text': text, 'language': language}, config=langsmith_config)
+    result = chain.invoke({'text': text, 'language': config["language"]}, config=langsmith_config)
     return result
 
 
@@ -160,6 +131,7 @@ def split_messages_by_token_count(client, messages: list[dict]) -> list[list[str
         :param messages:
         :param client:
     """
+    config = get_llm_config()
     parsed_messages = get_parsed_messages(client, messages)
 
     body_token_counts = [
@@ -170,7 +142,7 @@ def split_messages_by_token_count(client, messages: list[dict]) -> list[list[str
     current_count = 0
 
     for message, count in zip(parsed_messages, body_token_counts):
-        if current_count + count <= MAX_BODY_TOKENS:
+        if current_count + count <= config["max_body_tokens"]:
             current_sublist.append(message)
             current_count += count
         else:
@@ -206,6 +178,7 @@ def summarize_slack_messages(
     Returns:
         list: A list of summary text, with the context message as the first element.
     """
+    config = get_llm_config()
     # Determine if the channel is private
     try:
         channel_info = client.conversations_info(channel=channel_id)
@@ -227,7 +200,7 @@ def summarize_slack_messages(
                 feature_name=feature_name, 
                 user=user, 
                 channel=channel_name, 
-                language=LANGUAGE, 
+                language=config["language"], 
                 is_private=is_private,
             )
         except openai.RateLimitError as e:
