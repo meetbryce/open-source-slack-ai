@@ -7,7 +7,7 @@ from langchain_openai import ChatOpenAI
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 
-from ossai.utils import get_parsed_messages, get_langsmith_config, get_llm_config
+from ossai.utils import get_parsed_messages, get_langsmith_config, get_llm_config, get_is_private_and_channel_name
 
 load_dotenv()
 
@@ -180,14 +180,7 @@ def summarize_slack_messages(
     """
     config = get_llm_config()
     # Determine if the channel is private
-    try:
-        channel_info = client.conversations_info(channel=channel_id)
-        channel_name = channel_info['channel']['name']
-        is_private = channel_info['channel']['is_private']
-    except Exception as e:
-        print(f"Error getting channel info for is_private, defaulting to private: {e}")
-        channel_name = "unknown"
-        is_private = True    
+    is_private, channel_name = get_is_private_and_channel_name(client, channel_id)
 
     message_splits = split_messages_by_token_count(client, messages)
     print(f"{len(message_splits)=}")

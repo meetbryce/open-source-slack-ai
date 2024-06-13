@@ -62,6 +62,18 @@ async def get_direct_message_channel_id(client: WebClient, user_id: str) -> str:
         raise e
     
 
+def get_is_private_and_channel_name(client: WebClient, channel_id: str) -> tuple[bool, str]:
+    try:
+        channel_info = client.conversations_info(channel=channel_id)
+        channel_name = channel_info['channel']['name']  
+        is_private = channel_info['channel']['is_private']
+    except Exception as e:
+        print(f"Error getting channel info for is_private, defaulting to private: {e}")
+        channel_name = "unknown"
+        is_private = True    
+    return is_private, channel_name
+
+
 def get_langsmith_config(feature_name:str, user:dict, channel:str, is_private=False):
     run_id = str(uuid.uuid4())
     tracer = CustomLangChainTracer(is_private=is_private)  # FIXME: this doesn't add privacy like it should

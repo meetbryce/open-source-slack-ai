@@ -66,12 +66,36 @@ async def test_lda_topics(messages, num_topics, stop_words):
     assert len(result) == num_topics
 
 
-@patch('ossai.topic_analysis.openai.ChatCompletion.create')
 @pytest.mark.asyncio
-async def test_synthesize_topics(mock_create):
-    mock_create.return_value = MagicMock(choices=[MagicMock(message=MagicMock(content='Content'))])
-    result = await topic_analysis._synthesize_topics('topics_str', 'channel')
-    assert isinstance(result, str)
+async def test_synthesize_topics(monkeypatch):
+    # Setup test data
+    topics_str = "KMeans Results:\n - term1, term2, term3\nLSA Results:\n - term4, term5, term1"
+    channel = "test_channel"
+    user = {"name": "testuser", "title": "developer"}
+    is_private = False
+
+    # Mocking ChatOpenAI and StrOutputParser
+    class MockChatOpenAI:
+        def __init__(self, model, temperature):
+            pass
+
+        def __call__(self, *args, **kwargs):
+            return "Mocked response from ChatOpenAI"
+
+    class MockStrOutputParser:
+        def __call__(self, *args, **kwargs):
+            return "- term1, term2, term3\n- term4, term5, term1"
+
+    # Patching the dependencies
+    monkeypatch.setattr(topic_analysis, "ChatOpenAI", MockChatOpenAI)
+    monkeypatch.setattr(topic_analysis, "StrOutputParser", MockStrOutputParser)
+
+    # Call the function
+    result = await topic_analysis._synthesize_topics(topics_str, channel, user, is_private)
+
+    # Assertions
+    assert result == "*Channel Overview: #test_channel*\n\n- term1, term2, term3\n- term4, term5, term1"
+
 
 
 @patch('ossai.topic_analysis._synthesize_topics')
@@ -86,3 +110,6 @@ async def test_analyze_topics_of_history(mock_kmeans, mock_lsa, mock_lda, mock_s
     mock_synthesize.return_value = 'synthesized topics'
     result = await topic_analysis.analyze_topics_of_history('channel_name', messages, num_topics)
     assert isinstance(result, str)
+
+
+# todo: analyze_topics_of_history

@@ -3,15 +3,19 @@ import re
 import string
 
 import nltk
-import openai
 import spacy
 from dotenv import load_dotenv
+from langchain_openai import ChatOpenAI
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.prompts import ChatPromptTemplate
 from gensim import corpora
 from gensim.models import LdaModel, Phrases
 from nltk.corpus import stopwords
 from sklearn.cluster import KMeans
 from sklearn.decomposition import TruncatedSVD
 from sklearn.feature_extraction.text import TfidfVectorizer
+
+from ossai.utils import get_llm_config, get_langsmith_config
 
 load_dotenv()
 nltk.download("stopwords")
@@ -24,15 +28,9 @@ except:
     from spacy.cli import download
     download('en_core_web_md')
     nlp = spacy.load('en_core_web_md')
-OPEN_AI_TOKEN = str(os.environ.get("OPEN_AI_TOKEN")).strip()
-TEMPERATURE = float(os.environ.get("TEMPERATURE") or 0.2) + 0.1
-CHAT_MODEL = "gpt-4o"  # todo: make this configurable via .env (default to gpt-4o if unset)
+config = get_llm_config()
+TEMPERATURE = float(config['temperature']) + 0.1  # a little more creativity is beneficial here
 DEBUG = bool(os.environ.get("DEBUG", False))
-
-if OPEN_AI_TOKEN == "":
-    raise ValueError("OPEN_AI_TOKEN is not set in .env file")
-
-openai.api_key = OPEN_AI_TOKEN
 
 
 async def _kmeans_topics(tfidf_matrix, num_topics, terms):
@@ -87,33 +85,43 @@ async def _lda_topics(messages, num_topics, stop_words):
     return topics
 
 
-async def _synthesize_topics(topics_str: str, channel: str) -> str:
-    # todo: (maybe leverage that stuff about code mode or whatever)?
-    prompt = (
-        f'For the provided results from topic analyses on the entire history of the "{channel}" Slack channel, '
-        f"please provide a conversational summary and interpretation. Each bullet is a cluster under the methodology "
-        f"heading; do not mention the methodology. When analyzing each cluster, please conflate duplicates and ignore "
-        f"meaningless clusters. Do not include this prompt in your response. Please provide a direct bullet-point "
-        f"analysis of the provided results. Avoid introductory or transitional sentences. Focus directly on the "
-        f"content. Please do not split up your response based on the analysis methodology; you should give one set of "
-        f"takeaways.\n\n{topics_str}\n"
+async def _synthesize_topics(topics_str: str, channel: str, user: str, is_private: bool = False) -> str:
+    system_msg = """\
+    You are a topic analysis expert, synthesizing the results of various topic analysis methods conducted on a Slack channel's message history. 
+    You write conversationally and never use technical terms like KMeans, LDA, clustering, or LSA. 
+    You always respond in markdown formatting ready for Slack. Use - for bullets, not *.
+    """
+
+    user_msg = f"""\
+    For the provided results from topic analyses on the entire history of the "{channel}" Slack channel, 
+    please provide a conversational summary and interpretation. Each bullet is a cluster under the methodology 
+    heading; do not mention the methodology. When analyzing each cluster, please conflate duplicates and ignore 
+    meaningless clusters. Do not include this prompt in your response. Please provide a direct bullet-point 
+    analysis of the provided results. Avoid introductory or transitional sentences. Focus directly on the 
+    content. Please do not split up your response based on the analysis methodology; you should give one set of 
+    takeaways.
+
+    {topics_str}
+    """
+
+    config = get_llm_config()
+    model = ChatOpenAI(model=config["chat_model"], temperature=config["temperature"])
+
+    prompt_template = ChatPromptTemplate.from_messages(
+        [('system', system_msg), ('user', user_msg)]
     )
 
-    completion = openai.ChatCompletion.create(
-        model=CHAT_MODEL,
-        temperature=TEMPERATURE,
-        messages=[
-            {
-                "role": "system",
-                "content": "You are a topic analysis expert, you are synthesizing the results of various topic analysis"
-                "methods conducted on a Slack channel's message history. You write conversationally and "
-                "never use technical terms like KMeans, LDA, clustering, or LSA. You always respond in "
-                "markdown formatting ready for Slack. Use - for bullets, not *.",
-            },
-            {"role": "user", "content": prompt},
-        ],
+    parser = StrOutputParser()
+    chain = prompt_template | model | parser  # todo: add privacy mode
+
+    langsmith_config = get_langsmith_config(
+        feature_name='channel_topics',
+        user=user,
+        channel=channel,
+        is_private=is_private,
     )
-    result = completion.choices[0].message.content
+    print(f"{langsmith_config=}")
+    result = chain.invoke({'topics_str': topics_str, 'channel': channel}, config=langsmith_config)
     print(result)
 
     # parse the message reformat it for delivery via Slack message
@@ -125,7 +133,11 @@ async def _synthesize_topics(topics_str: str, channel: str) -> str:
 
 
 async def analyze_topics_of_history(
-    channel_name: str, messages, num_topics: int = 6
+    channel_name: str, 
+    messages, 
+    user: str, 
+    num_topics: int = 6, 
+    is_private: bool = False
 ) -> str:
     # Remove URLs
     messages = [re.sub(r"http\S+", "", message) for message in messages]
@@ -158,11 +170,12 @@ async def analyze_topics_of_history(
     tfidf_matrix = vectorizer.fit_transform(messages)
     terms = vectorizer.get_feature_names_out()
 
+    # todo: make these part of the langsmith trace
     kmeans_results = await _kmeans_topics(tfidf_matrix, num_topics, terms)
     lsa_results = await _lsa_topics(tfidf_matrix, num_topics, terms)
     lda_results = await _lda_topics(messages, num_topics, stop_words)
 
-    topics_str = f"*Topic Analysis of #{channel_name}:*\n\n"
+    topics_str = f""
 
     for name, model in [
         ("KMeans", kmeans_results),
@@ -176,4 +189,4 @@ async def analyze_topics_of_history(
 
     print(topics_str)
 
-    return await _synthesize_topics(topics_str, channel_name)
+    return await _synthesize_topics(topics_str, channel_name, user, is_private)

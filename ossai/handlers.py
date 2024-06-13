@@ -4,7 +4,7 @@ from slack_sdk.errors import SlackApiError
 from ossai.summarizer import summarize_slack_messages
 from ossai.topic_analysis import analyze_topics_of_history
 from ossai.utils import get_direct_message_channel_id, get_workspace_name, get_channel_history, \
-    get_parsed_messages, get_bot_id, get_user_context
+    get_parsed_messages, get_bot_id, get_user_context, get_is_private_and_channel_name
 
 
 async def handler_shortcuts(client: WebClient, is_private: bool, payload, say, user_id: str):
@@ -84,13 +84,16 @@ async def handler_tldr_slash_command(client: WebClient, ack, payload, say, user_
 async def handler_topics_slash_command(client: WebClient, ack, payload, say, user_id: str):
     # START boilerplate
     await ack()
+    channel_id = payload["channel_id"]
     dm_channel_id = await get_direct_message_channel_id(client, user_id)
     await say(channel=dm_channel_id, text='...')
 
-    history = await get_channel_history(client, payload["channel_id"])
+    history = await get_channel_history(client, channel_id)
     history.reverse()
     # END boilerplate
 
     messages = get_parsed_messages(client, history, with_names=False)
-    topic_overview = await analyze_topics_of_history(payload['channel_name'], messages)
+    user = await get_user_context(client, user_id)
+    is_private, channel_name = get_is_private_and_channel_name(client, channel_id)
+    topic_overview = await analyze_topics_of_history(channel_name, messages, user=user, is_private=is_private)
     return await say(channel=dm_channel_id, text=topic_overview)

@@ -207,3 +207,5 @@ async def test_get_user_context_success(mock_client):
     assert result == {"name": "ashley.wang", "title": "CEO"}
 
 # todo: test get_llm_config()
+
+# todo: test get_is_private_and_channel_name()
