@@ -1,10 +1,12 @@
 import os
 import runpy
-from unittest.mock import patch, MagicMock, create_autospec, AsyncMock
+from unittest.mock import ANY, patch, MagicMock, create_autospec, AsyncMock
 
 import pytest
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
+
+from ossai.slack_server import handle_slash_command_sandbox
 
 
 @pytest.fixture
@@ -45,3 +47,26 @@ def test_main_loads_as_script(mock_app_advanced, mock_uvicorn, mock_os_environ, 
     out, err = capfd.readouterr()
     assert err == ''
     assert mock_uvicorn.called
+
+
+@pytest.mark.asyncio
+@patch('ossai.slack_server.get_text_and_blocks_for_say')
+async def test_handle_slash_command_sandbox(mock_get_text_and_blocks_for_say):
+    # Setup
+    mock_ack = AsyncMock()
+    mock_say = AsyncMock()
+
+    payload = {'user_id': 'U123'}
+    mock_get_text_and_blocks_for_say.return_value = ('text', 'blocks')
+
+    # Execute
+    await handle_slash_command_sandbox(mock_ack, payload, mock_say)
+
+    # Verify
+    mock_ack.assert_awaited_once_with('...')
+    mock_get_text_and_blocks_for_say.assert_called_once_with(
+        title="This is a test of the /sandbox command.",
+        run_id=ANY,
+        messages=['-- Useful summary of content goes here --']
+    )
+    mock_say.assert_awaited_once_with('text', blocks='blocks')

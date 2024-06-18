@@ -1,7 +1,8 @@
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 import uuid
 import pytest
 from slack_sdk import WebClient
+from slack_sdk.errors import SlackApiError
 
 from ossai.handlers import (
     handler_shortcuts,
@@ -194,3 +195,114 @@ def test_handler_feedback_very_helpful_button(env_get_mock, client_mock):
         score=2.0,
         comment='Feedback from action: very_helpful_button'
     )
+
+
+@pytest.mark.asyncio
+@patch('ossai.handlers.get_direct_message_channel_id')
+@patch('ossai.handlers.get_bot_id')
+async def test_handler_shortcuts_channel_not_found_error(get_bot_id_mock, get_direct_message_channel_id_mock):
+    # Setup
+    client = MagicMock()
+    client.bots_info.return_value = {'bot': {'name': 'TestBot'}}
+    say = AsyncMock()
+    get_direct_message_channel_id_mock.return_value = 'DM123'
+    get_bot_id_mock.return_value = 'B123'
+    client.conversations_replies.side_effect = SlackApiError(message="channel_not_found", response={"error": "channel_not_found"})
+    
+    # Execute
+    await handler_shortcuts(client, is_private=False, payload={
+        'channel': {'id': 'C123'},
+        'message_ts': '1234567890.123456'
+    }, say=say, user_id='U123')
+
+    # Verify
+    say.assert_called_with(channel='DM123', text="Sorry, couldn't find the channel. Have you added `@TestBot` to the channel?")
+
+
+@pytest.mark.asyncio
+@patch('ossai.handlers.get_channel_history')
+@patch('ossai.handlers.get_user_context')
+@patch('ossai.handlers.summarize_slack_messages')
+@patch('ossai.handlers.get_text_and_blocks_for_say')
+@patch('ossai.handlers.get_direct_message_channel_id')
+async def test_handler_tldr_slash_command_non_public(get_direct_message_channel_id_mock, get_text_and_blocks_for_say_mock, summarize_slack_messages_mock, get_user_context_mock, get_channel_history_mock):
+    # Setup
+    client = AsyncMock()
+    say = AsyncMock()
+    get_direct_message_channel_id_mock.return_value = 'DM123'
+    get_channel_history_mock.return_value = ['message1', 'message2']
+    get_user_context_mock.return_value = {'user': 'info'}
+    summarize_slack_messages_mock.return_value = ('summary', 'run_id')
+    get_text_and_blocks_for_say_mock.return_value = ('text', 'blocks')
+
+    # Execute
+    await handler_tldr_slash_command(client, AsyncMock(), {
+        # 'text': 'non-public',
+        'channel_name': 'general',
+        'channel_id': 'C123'
+    }, say, 'U123')
+
+    # Verify
+    assert say.call_count == 2
+    say.assert_called_with(channel='DM123', text='text', blocks='blocks')
+    get_direct_message_channel_id_mock.assert_called_once_with(client, 'U123')
+
+
+@pytest.mark.asyncio
+@patch('ossai.handlers.get_channel_history')
+@patch('ossai.handlers.get_user_context')
+@patch('ossai.handlers.summarize_slack_messages')
+@patch('ossai.handlers.get_text_and_blocks_for_say')
+@patch('ossai.handlers.get_direct_message_channel_id')
+async def test_handler_tldr_slash_command_public_extended(
+    get_direct_message_channel_id_mock, 
+    get_text_and_blocks_for_say_mock, 
+    summarize_slack_messages_mock, 
+    get_user_context_mock, 
+    get_channel_history_mock
+):
+    # Setup
+    client = AsyncMock()
+    say = AsyncMock()
+    get_channel_history_mock.return_value = ['message1', 'message2']
+    get_user_context_mock.return_value = {'user': 'info'}
+    summarize_slack_messages_mock.return_value = ('summary', 'run_id')
+    get_text_and_blocks_for_say_mock.return_value = ('dummy text', 'blocks')
+
+    # Execute
+    await handler_tldr_slash_command(client, AsyncMock(), {
+        'text': 'public',
+        'channel_name': 'general',
+        'channel_id': 'C123'
+    }, say, 'U123')
+
+    # Verify
+    assert say.call_count == 2
+    say.assert_called_with(channel=None, text='dummy text', blocks='blocks')
+    get_direct_message_channel_id_mock.assert_not_called()
+
+
+# Additional test for public command
+# @pytest.mark.asyncio
+# @patch('ossai.handlers.get_channel_history')
+# @patch('ossai.handlers.get_user_context')
+# @patch('ossai.handlers.summarize_slack_messages')
+# @patch('ossai.handlers.get_text_and_blocks_for_say')
+# async def test_handler_tldr_slash_command_public__TEMP(get_text_and_blocks_for_say_mock, summarize_slack_messages_mock, get_user_context_mock, get_channel_history_mock):
+#     # Setup
+#     client = AsyncMock()
+#     say = AsyncMock()
+#     get_channel_history_mock.return_value = ['message1', 'message2']
+#     get_user_context_mock.return_value = {'user': 'info'}
+#     summarize_slack_messages_mock.return_value = ('summary', 'run_id')
+#     get_text_and_blocks_for_say_mock.return_value = ('text', 'blocks')
+
+#     # Execute
+#     await handler_tldr_slash_command(client, AsyncMock(), {
+#         'text': 'public',
+#         'channel_name': 'general',
+#         'channel_id': 'C123'
+#     }, say, 'U123')
+
+#     # Verify
+#     say.assert_called_once_with(text='text', blocks='blocks')
