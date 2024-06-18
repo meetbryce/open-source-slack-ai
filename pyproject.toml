@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "open-source-slack-ai"
-version = "0.2.0"
+version = "0.2.1"
 description = ""
 authors = ["Bryce York <bryce@bryceyork.com>"]
 readme = "README.md"

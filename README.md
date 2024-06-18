@@ -127,7 +127,7 @@ Please note that if you're using a virtual environment, make sure it's activated
 ## Future Enhancements
 
 - [x] Move to LangChain & LangSmith for extensibility, tracing, & control
-- [ ] leverage LangSmith's feedback capabilities to capture & learn from user feedback
+- [x] leverage LangSmith's feedback capabilities to capture & learn from user feedback
 - [ ] Add slack app setup details and sample app manifest to README
 - [ ] Implement evals suite to complement unit tests
 - [ ] Add support for alternative and open-source LLMs
