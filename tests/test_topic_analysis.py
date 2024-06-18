@@ -1,6 +1,7 @@
-from unittest.mock import patch, MagicMock
-
 import pytest
+import re
+
+from unittest.mock import patch, MagicMock
 
 from ossai import topic_analysis
 
@@ -91,10 +92,12 @@ async def test_synthesize_topics(monkeypatch):
     monkeypatch.setattr(topic_analysis, "StrOutputParser", MockStrOutputParser)
 
     # Call the function
-    result = await topic_analysis._synthesize_topics(topics_str, channel, user, is_private)
+    (result, run_id) = await topic_analysis._synthesize_topics(topics_str, channel, user, is_private)
 
     # Assertions
-    assert result == "*Channel Overview: #test_channel*\n\n- term1, term2, term3\n- term4, term5, term1"
+    assert result == "- term1, term2, term3\n- term4, term5, term1"
+    assert isinstance(run_id, str)
+    assert re.match(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$', run_id) is not None
 
 
 

@@ -1,9 +1,10 @@
 import os
 import re
 import string
-
 import nltk
 import spacy
+
+from uuid import UUID
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 from langchain_core.output_parsers import StrOutputParser
@@ -85,11 +86,12 @@ async def _lda_topics(messages, num_topics, stop_words):
     return topics
 
 
-async def _synthesize_topics(topics_str: str, channel: str, user: str, is_private: bool = False) -> str:
+async def _synthesize_topics(topics_str: str, channel: str, user: str, is_private: bool = False) -> tuple[str, UUID]:
     system_msg = """\
     You are a topic analysis expert, synthesizing the results of various topic analysis methods conducted on a Slack channel's message history. 
     You write conversationally and never use technical terms like KMeans, LDA, clustering, or LSA. 
     You always respond in markdown formatting ready for Slack. Use - for bullets, not *.
+    Do not wrap your response in code blocks or markdown code blocks.
     """
 
     user_msg = f"""\
@@ -127,9 +129,8 @@ async def _synthesize_topics(topics_str: str, channel: str, user: str, is_privat
     # parse the message reformat it for delivery via Slack message
     result = result.replace("\n* ", "\n- ")
     result = result.replace("**", "*")
-    result = f"*Channel Overview: #{channel}*\n\n" + result
 
-    return result
+    return result, langsmith_config['run_id']
 
 
 async def analyze_topics_of_history(

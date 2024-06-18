@@ -10,7 +10,9 @@ from ossai.handlers import (
     handler_shortcuts,
     handler_tldr_slash_command,
     handler_topics_slash_command,
+    handler_feedback,
 )
+from ossai.utils import get_text_and_blocks_for_say
 
 load_dotenv()
 app = FastAPI()
@@ -51,8 +53,30 @@ async def handle_tldr_slash_command(ack, payload, say):
 
 
 @async_app.command("/tldr")
-async def temp__handle_slash_command_topics(ack, payload, say):
+async def handle_slash_command_topics(ack, payload, say):
     return await handler_topics_slash_command(client, ack, payload, say, user_id=payload['user_id'])
+
+
+@async_app.command("/sandbox")
+async def handle_slash_command_sandbox(ack, payload, say):
+    await ack('...')
+    import uuid
+    run_id = str(uuid.uuid4())
+
+    text = """-- Useful summary of content goes here --"""
+    lines = text.strip().split('\n')
+    title = "This is a test of the /sandbox command."
+    text, blocks = get_text_and_blocks_for_say(title=title, run_id=run_id, messages=lines)
+    return await say(text, blocks=blocks)
+
+
+@async_app.action("not_helpful_button")
+@async_app.action("helpful_button")
+@async_app.action("very_helpful_button")
+async def handle_feedback(ack, body, logger):
+    await ack('...')
+    handler_feedback(body)
+    return logger.info(body)
 
 
 @async_app.shortcut("thread")

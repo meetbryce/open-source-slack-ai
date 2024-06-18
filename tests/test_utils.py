@@ -209,3 +209,5 @@ async def test_get_user_context_success(mock_client):
 # todo: test get_llm_config()
 
 # todo: test get_is_private_and_channel_name()
+
+# todo: test get_text_and_blocks_for_say()

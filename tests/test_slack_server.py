@@ -1,6 +1,6 @@
 import os
 import runpy
-from unittest.mock import patch, MagicMock, create_autospec
+from unittest.mock import patch, MagicMock, create_autospec, AsyncMock
 
 import pytest
 from slack_bolt import App

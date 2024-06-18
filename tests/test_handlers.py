@@ -1,5 +1,5 @@
 from unittest.mock import AsyncMock, patch
-
+import uuid
 import pytest
 from slack_sdk import WebClient
 
@@ -7,6 +7,7 @@ from ossai.handlers import (
     handler_shortcuts,
     handler_tldr_slash_command,
     handler_topics_slash_command,
+    handler_feedback,
 )
 
 
@@ -68,7 +69,7 @@ async def test_handler_topics_slash_command(
     get_direct_message_channel_id_mock.return_value = "dm_channel_id"
     get_channel_history_mock.return_value = ["message1", "message2", "message3"]
     get_parsed_messages_mock.return_value = "parsed_messages"
-    analyze_topics_of_history_mock.return_value = "topic_overview"
+    analyze_topics_of_history_mock.return_value = ("topic_overview", str(uuid.uuid4()))
     await handler_topics_slash_command(client, AsyncMock(), payload, say, user_id="foo123")
     say.assert_called()
 
@@ -88,19 +89,27 @@ async def test_handler_shortcuts(
     say,
 ):
     # Arrange
+    run_id = str(uuid.uuid4())
     get_direct_message_channel_id_mock.return_value = "dm_channel_id"
     conversations_replies_mock.return_value = {
         "ok": True,
         "messages": [{"text": "test message"}],
     }
     get_workspace_name_mock.return_value = "workspace_name"
-    summarize_slack_messages_mock.return_value = ["summary"]
+    summarize_slack_messages_mock.return_value = ["summary"], run_id
 
-    # Act
+    expected_blocks = [
+        {'type': 'section', 'text': {'type': 'mrkdwn', 'text': '*Summary of <https://workspace_name.slack.com/archives/channel_id/pmessage_ts|message>:*\n>test message\n'}},
+        {'type': 'section', 'text': {'type': 'mrkdwn', 'text': 'summary'}},
+        {'type': 'actions', 'elements': [
+            {'type': 'button', 'text': {'type': 'plain_text', 'text': ':-1: Not Helpful'}, 'action_id': 'not_helpful_button', 'value': run_id},
+            {'type': 'button', 'text': {'type': 'plain_text', 'text': ':+1: Helpful'}, 'action_id': 'helpful_button', 'value': run_id},
+            {'type': 'button', 'text': {'type': 'plain_text', 'text': ':tada: Very Helpful'}, 'action_id': 'very_helpful_button', 'value': run_id}
+        ]}
+    ]
+
     await handler_shortcuts(client, True, payload, say, user_id="foo123")
-
-    # Assert
-    say.assert_called_with(channel="dm_channel_id", text="\n".join(["summary"]))
+    say.assert_called_with(channel="dm_channel_id", text="summary", blocks=expected_blocks)
 
 
 @pytest.mark.asyncio
@@ -116,3 +125,72 @@ async def test_handler_tldr_slash_command_public(
     }
     await handler_tldr_slash_command(client, AsyncMock(), payload, say, user_id="foo123")
     say.assert_called()
+
+
+@patch("ossai.handlers.Client")
+@patch("os.environ.get")
+def test_handler_feedback_not_helpful_button(env_get_mock, client_mock):
+    # Arrange
+    env_get_mock.return_value = "test_project_id"
+    client_instance = client_mock.return_value
+    body = {
+        'actions': [{'value': '1234', 'action_id': 'not_helpful_button'}]
+    }
+
+    # Act
+    handler_feedback(body)
+
+    # Assert
+    client_instance.create_feedback.assert_called_once_with(
+        '1234',
+        project_id='test_project_id',
+        key='user_feedback',
+        score=-1.0,
+        comment='Feedback from action: not_helpful_button'
+    )
+
+
+@patch("ossai.handlers.Client")
+@patch("os.environ.get")
+def test_handler_feedback_helpful_button(env_get_mock, client_mock):
+    # Arrange
+    env_get_mock.return_value = "test_project_id"
+    client_instance = client_mock.return_value
+    body = {
+        'actions': [{'value': '1234', 'action_id': 'helpful_button'}]
+    }
+
+    # Act
+    handler_feedback(body)
+
+    # Assert
+    client_instance.create_feedback.assert_called_once_with(
+        '1234',
+        project_id='test_project_id',
+        key='user_feedback',
+        score=1.0,
+        comment='Feedback from action: helpful_button'
+    )
+
+
+@patch("ossai.handlers.Client")
+@patch("os.environ.get")
+def test_handler_feedback_very_helpful_button(env_get_mock, client_mock):
+    # Arrange
+    env_get_mock.return_value = "test_project_id"
+    client_instance = client_mock.return_value
+    body = {
+        'actions': [{'value': '1234', 'action_id': 'very_helpful_button'}]
+    }
+
+    # Act
+    handler_feedback(body)
+
+    # Assert
+    client_instance.create_feedback.assert_called_once_with(
+        '1234',
+        project_id='test_project_id',
+        key='user_feedback',
+        score=2.0,
+        comment='Feedback from action: very_helpful_button'
+    )

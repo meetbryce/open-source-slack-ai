@@ -1,4 +1,5 @@
 import os
+from uuid import UUID
 import re
 import openai
 
@@ -17,7 +18,7 @@ def summarize(
         user: str, 
         channel: str,  
         is_private: bool = False, 
-    ):
+    ) -> tuple[str, UUID]:
     """
     Summarize a chat log in bullet points, in the specified language.
 
@@ -76,7 +77,7 @@ def summarize(
     )
     print(f"{langsmith_config=}")
     result = chain.invoke({'text': text, 'language': config["language"]}, config=langsmith_config)
-    return result
+    return result, langsmith_config['run_id']
 
 
 
@@ -157,11 +158,10 @@ def split_messages_by_token_count(client, messages: list[dict]) -> list[list[str
 def summarize_slack_messages(
         client, 
         messages: list, 
-        context_message: str, 
         channel_id: str,
         feature_name: str, 
         user: str, 
-    ) -> list:
+    ) -> tuple[list, UUID]:
     """
     Summarize a list of slack messages.
 
@@ -172,23 +172,21 @@ def summarize_slack_messages(
     Args:
         client: The slack client.
         messages (list): A list of slack messages to be summarized.
-        context_message (str): A context message that will be the first element in the returned list.
         channel_id (str): The ID of the Slack channel.
 
     Returns:
         list: A list of summary text, with the context message as the first element.
     """
-    config = get_llm_config()
     # Determine if the channel is private
     is_private, channel_name = get_is_private_and_channel_name(client, channel_id)
 
     message_splits = split_messages_by_token_count(client, messages)
     print(f"{len(message_splits)=}")
-    result_text = [context_message]
+    result_text = []
 
     for message_split in message_splits:
         try:
-            text = summarize(
+            text, run_id = summarize(
                 "\n".join(message_split), 
                 feature_name=feature_name, 
                 user=user, 
@@ -197,10 +195,10 @@ def summarize_slack_messages(
             )
         except openai.RateLimitError as e:
             print(e)
-            return [f"Sorry, OpenAI rate limit exceeded..."]
+            return [f"Sorry, OpenAI rate limit exceeded..."], None
         result_text.append(text)
 
-    return result_text
+    return result_text, run_id
 
 
 def main():
