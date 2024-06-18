@@ -193,7 +193,6 @@ def summarize_slack_messages(
                 feature_name=feature_name, 
                 user=user, 
                 channel=channel_name, 
-                language=config["language"], 
                 is_private=is_private,
             )
         except openai.RateLimitError as e:
