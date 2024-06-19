@@ -1,7 +1,8 @@
 import os
 import re
 import uuid
-from time import mktime, localtime, strptime
+from time import mktime, gmtime, strptime
+import calendar
 
 from datetime import date
 from dotenv import load_dotenv
@@ -264,16 +265,16 @@ def get_workspace_name(client: WebClient):
 
 def get_since_timeframe_presets():
     DAY_OF_SECONDS = 86400
-    now = localtime()
-    today = int(mktime(strptime(f"{now.tm_year}-{now.tm_mon}-{now.tm_mday}", "%Y-%m-%d")))
+    now = gmtime()
+    today = calendar.timegm(strptime(f"{now.tm_year}-{now.tm_mon}-{now.tm_mday}", "%Y-%m-%d"))
     options = [
-        ('Last 7 days', str(int(today - 7 * DAY_OF_SECONDS))),  # 86400 seconds in a day
-        ('Last 14 days', str(int(today - 14 * DAY_OF_SECONDS))),
-        ('Last 30 days', str(int(today - 30 * DAY_OF_SECONDS))),
-        ('This week', str(int(today - (now.tm_wday * DAY_OF_SECONDS)))),  # Monday at 00:00:00
-        ('Last week', str(int(today - (now.tm_wday * DAY_OF_SECONDS) - 7 * DAY_OF_SECONDS))),  # From the start of last week
-        ('This month', str(int(mktime(strptime(f"{now.tm_year}-{now.tm_mon}-01", "%Y-%m-%d"))))),  # From the start of this month
-        ('Last month', str(int(mktime(strptime(f"{now.tm_year if now.tm_mon > 1 else now.tm_year - 1}-{now.tm_mon - 1 if now.tm_mon > 1 else 12}-01", "%Y-%m-%d"))))),  # From the start of last month
+        ('Last 7 days', str(today - 7 * DAY_OF_SECONDS)),
+        ('Last 14 days', str(today - 14 * DAY_OF_SECONDS)),
+        ('Last 30 days', str(today - 30 * DAY_OF_SECONDS)),
+        ('This week', str(today - (now.tm_wday * DAY_OF_SECONDS))),  # Monday at 00:00:00
+        ('Last week', str(today - (now.tm_wday * DAY_OF_SECONDS) - 7 * DAY_OF_SECONDS)),  # From the start of last week
+        ('This month', str(calendar.timegm(strptime(f"{now.tm_year}-{now.tm_mon}-01", "%Y-%m-%d")))),  # From the start of this month
+        ('Last month', str(calendar.timegm(strptime(f"{now.tm_year if now.tm_mon > 1 else now.tm_year - 1}-{now.tm_mon - 1 if now.tm_mon > 1 else 12}-01", "%Y-%m-%d")))),  # From the start of last month
     ]
     return {
         "type": "static_select",

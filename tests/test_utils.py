@@ -212,11 +212,11 @@ async def test_get_user_context_success(mock_client):
 
 # todo: test get_text_and_blocks_for_say()
 
-@patch('ossai.utils.localtime')
-def test_get_since_timeframe_presets_structure(mock_localtime):
+@patch('ossai.utils.gmtime')
+def test_get_since_timeframe_presets_structure(mock_gmtime):
     # Mock the current time to a fixed timestamp
     fixed_time = 1718825962  # This corresponds to 2024-06-19 19:39:22 UTC
-    mock_localtime.return_value = time.localtime(fixed_time)
+    mock_gmtime.return_value = time.gmtime(fixed_time)
 
     presets = utils.get_since_timeframe_presets()
     assert isinstance(presets, dict)
@@ -227,25 +227,26 @@ def test_get_since_timeframe_presets_structure(mock_localtime):
     assert len(options) == 7  # Expecting 7 time frame options
 
 
-@patch('ossai.utils.localtime')
-def test_get_since_timeframe_presets_values(mock_localtime):
+@patch('ossai.utils.gmtime')
+def test_get_since_timeframe_presets_values(mock_gmtime):
     fixed_time = 1718825962  # This corresponds to 2024-06-19 19:39:22 UTC
-    mock_localtime.return_value = time.localtime(fixed_time)
+    mock_gmtime.return_value = time.gmtime(fixed_time)
 
     presets = utils.get_since_timeframe_presets()
     values = presets['options']
 
     expected_values = [
-        ('Last 7 days', "1718164800"),  # Last 7 days
-        ('Last 14 days', "1717560000"),  # Last 14 days
-        ('Last 30 days', "1716177600"),  # Last 30 days
-        ('This week', "1718596800"),  # This week (Monday at 00:00:00)
-        ('Last week', "1717992000"),  # Last week (start of last week)
-        ('This month', "1717214400"),  # This month (start of this month)
-        ('Last month', "1714536000"),   # Last month (start of last month)
+        ('Last 7 days', "1718150400"),  # Last 7 days
+        ('Last 14 days', "1717545600"),  # Last 14 days
+        ('Last 30 days', "1716163200"),  # Last 30 days
+        ('This week', "1718582400"),  # This week (Monday at 00:00:00)
+        ('Last week', "1717977600"),  # Last week (start of last week)
+        ('This month', "1717200000"),  # This month (start of this month)
+        ('Last month', "1714521600"),   # Last month (start of last month)
     ]
 
     # Check if all options have the correct structure and types
     for (expected_text, expected_value), actual in zip(expected_values, values):
         assert expected_text == actual['text']['text'], f"Expected text {expected_text}, got {actual['text']['text']}"
         assert expected_value == actual['value'], f"'{expected_text}': Expected value {expected_value}, got {actual['value']}"
+
