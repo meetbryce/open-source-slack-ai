@@ -113,6 +113,3 @@ async def test_analyze_topics_of_history(mock_kmeans, mock_lsa, mock_lda, mock_s
     mock_synthesize.return_value = 'synthesized topics'
     result = await topic_analysis.analyze_topics_of_history('channel_name', messages, num_topics)
     assert isinstance(result, str)
-
-
-# todo: analyze_topics_of_history

@@ -66,8 +66,6 @@ def summarize(
     parser = StrOutputParser()
     chain = prompt_template | model | parser 
 
-    # todo: add metadata such as user, channel, department, is_private, public vs DM, thread vs channel, etc.
-
     # Attach the context to the chain invocation
     langsmith_config = get_langsmith_config(
         feature_name=feature_name,
