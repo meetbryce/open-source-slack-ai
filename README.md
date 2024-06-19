@@ -78,8 +78,22 @@ cp example.env .env && open .env
 
 #### Slack app configuration
 
-[//]: # (todo: outline slack app settings)
-TODO
+Make a copy of `manifest.json` and change the request URL to your ngrok or server URL.
+
+Create a new Slack app [here](https://api.slack.com/apps?new_app=1) and configure it using your `manifest.yaml` 
+file. 
+
+You shouldn't need to make any other changes but you can change the name, description, and other 
+copy related settings.
+
+If you wish to adjust the name of the slash commands, you'll need to modify `slack_server.py`.
+
+Once configured, retrieve the "Bot User OAuth Token" from the "Install App" page and add it to your `.env` 
+file as `SLACK_BOT_TOKEN`.
+
+Then, on the Basic Information page under the App-Level Tokens heading create a token with the scop `connections:write`
+and add it to your `.env` file as `SLACK_APP_TOKEN`.
+
 
 ### Usage
 

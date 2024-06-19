@@ -1,0 +1,60 @@
+display_information:
+  name: Open-Source Slack AI
+  description: AI-superpowers in Slack without paying per user per month!
+  background_color: "#2b72e3"
+features:
+  bot_user:
+    display_name: Open-Source Slack AI
+    always_online: true
+  shortcuts:
+    - name: AI Thread Summary via DM
+      type: message
+      callback_id: thread_private
+      description: Summarize the thread with AI and sends it to the user via DM
+    - name: AI Thread Summary
+      type: message
+      callback_id: thread
+      description: Create a TLDR of the thread's contents as a reply to the thread itself.
+  slash_commands:
+    - command: /tldr_extended
+      description: Summarize channel history with open-source Slack AI
+      usage_hint: '["public" to post in channel]'
+      should_escape: false
+    - command: /tldr
+      description: Analyze channel topics with open-source Slack AI
+      should_escape: false
+    - command: /tldr_since
+      description: "Summarize messages over a time period "
+      usage_hint: "[in beta]"
+      should_escape: false
+oauth_config:
+  scopes:
+    user:
+      - channels:history
+      - groups:history
+    bot:
+      - app_mentions:read
+      - channels:history
+      - chat:write
+      - commands
+      - groups:history
+      - im:history
+      - im:write
+      - mpim:history
+      - mpim:write
+      - team:read
+      - users:read
+      - channels:read
+      - groups:read
+      - im:read
+      - mpim:read
+settings:
+  event_subscriptions:
+    request_url: https://YOURDOMAIN.COM/slack/events
+    bot_events:
+      - message.im
+  interactivity:
+    is_enabled: true
+  org_deploy_enabled: false
+  socket_mode_enabled: true
+  token_rotation_enabled: false
