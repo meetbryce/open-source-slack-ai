@@ -145,8 +145,8 @@ Please note that if you're using a virtual environment, make sure it's activated
 - [x] Move to LangChain & LangSmith for extensibility, tracing, & control
 - [x] leverage LangSmith's feedback capabilities to capture & learn from user feedback
 - [x] Add a `/tldr_since` command to summarize a channel's messages since a given date
+- [x] Add slack app setup details and sample app manifest to README
 - [ ] Incorporate threaded conversations in channel-level summaries
-- [ ] Add slack app setup details and sample app manifest to README
 - [ ] Implement evals suite to complement unit tests
 - [ ] Add support for alternative and open-source LLMs
 - [ ] Explore workflow for collecting data & fine-tuning models for cost reduction
