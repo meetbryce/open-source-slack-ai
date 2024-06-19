@@ -1,7 +1,7 @@
 import os
 import re
 import uuid
-import time
+from time import mktime, localtime, strptime
 
 from datetime import date
 from dotenv import load_dotenv
@@ -45,7 +45,7 @@ async def get_bot_id(client) -> str:
 async def get_channel_history(client: WebClient, channel_id: str, since: date = None , include_threads:bool = False) -> list:
     # todo: if include_threads, recursively get messages from threads
 
-    oldest_timestamp = time.mktime(since.timetuple()) if since else 0
+    oldest_timestamp = mktime(since.timetuple()) if since else 0
     response = client.conversations_history(channel=channel_id, limit=1000, oldest=oldest_timestamp)  # 1000 is the max limit
     bot_id = await get_bot_id(client)
     # todo: (optional) excluding all other bots too
@@ -263,14 +263,17 @@ def get_workspace_name(client: WebClient):
 
 
 def get_since_timeframe_presets():
+    DAY_OF_SECONDS = 86400
+    now = localtime()
+    today = int(mktime(strptime(f"{now.tm_year}-{now.tm_mon}-{now.tm_mday}", "%Y-%m-%d")))
     options = [
-        ('Last 7 days', str(int(time.time() - 7 * 86400))),  # 86400 seconds in a day
-        ('Last 14 days', str(int(time.time() - 14 * 86400))),
-        ('Last 30 days', str(int(time.time() - 30 * 86400))),
-        ('This week', str(int(time.time() - time.localtime().tm_wday * 86400))),  # Monday at 00:00:00
-        ('Last week', str(int(time.time() - 7 * 86400 * ((time.localtime().tm_wday + 1) % 7)))),  # From the start of last week
-        ('This month', str(int(time.mktime(time.strptime(f"{time.localtime().tm_year}-{time.localtime().tm_mon}-01", "%Y-%m-%d"))))),  # From the start of this month
-        ('Last month', str(int(time.mktime(time.strptime(f"{time.localtime().tm_year}-{time.localtime().tm_mon - 1}-01", "%Y-%m-%d"))))),  # From the start of last month
+        ('Last 7 days', str(int(today - 7 * DAY_OF_SECONDS))),  # 86400 seconds in a day
+        ('Last 14 days', str(int(today - 14 * DAY_OF_SECONDS))),
+        ('Last 30 days', str(int(today - 30 * DAY_OF_SECONDS))),
+        ('This week', str(int(today - (now.tm_wday * DAY_OF_SECONDS)))),  # Monday at 00:00:00
+        ('Last week', str(int(today - (now.tm_wday * DAY_OF_SECONDS) - 7 * DAY_OF_SECONDS))),  # From the start of last week
+        ('This month', str(int(mktime(strptime(f"{now.tm_year}-{now.tm_mon}-01", "%Y-%m-%d"))))),  # From the start of this month
+        ('Last month', str(int(mktime(strptime(f"{now.tm_year if now.tm_mon > 1 else now.tm_year - 1}-{now.tm_mon - 1 if now.tm_mon > 1 else 12}-01", "%Y-%m-%d"))))),  # From the start of last month
     ]
     return {
         "type": "static_select",

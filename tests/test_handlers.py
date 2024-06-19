@@ -3,12 +3,15 @@ import uuid
 import pytest
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
+from datetime import datetime, timezone
 
 from ossai.handlers import (
     handler_shortcuts,
     handler_tldr_slash_command,
     handler_topics_slash_command,
     handler_feedback,
+    handler_action_summarize_since_date,
+    handler_tldr_since_slash_command,
 )
 
 
@@ -282,27 +285,90 @@ async def test_handler_tldr_slash_command_public_extended(
     get_direct_message_channel_id_mock.assert_not_called()
 
 
-# Additional test for public command
-# @pytest.mark.asyncio
-# @patch('ossai.handlers.get_channel_history')
-# @patch('ossai.handlers.get_user_context')
-# @patch('ossai.handlers.summarize_slack_messages')
-# @patch('ossai.handlers.get_text_and_blocks_for_say')
-# async def test_handler_tldr_slash_command_public__TEMP(get_text_and_blocks_for_say_mock, summarize_slack_messages_mock, get_user_context_mock, get_channel_history_mock):
-#     # Setup
-#     client = AsyncMock()
-#     say = AsyncMock()
-#     get_channel_history_mock.return_value = ['message1', 'message2']
-#     get_user_context_mock.return_value = {'user': 'info'}
-#     summarize_slack_messages_mock.return_value = ('summary', 'run_id')
-#     get_text_and_blocks_for_say_mock.return_value = ('text', 'blocks')
+@pytest.mark.asyncio
+@patch('ossai.handlers.get_channel_history')
+@patch('ossai.handlers.get_user_context')
+@patch('ossai.handlers.summarize_slack_messages')
+@patch('ossai.handlers.get_text_and_blocks_for_say')
+@patch('ossai.handlers.get_direct_message_channel_id')
+async def test_handler_action_summarize_since_date(
+    get_direct_message_channel_id_mock,
+    get_text_and_blocks_for_say_mock,
+    summarize_slack_messages_mock,
+    get_user_context_mock,
+    get_channel_history_mock
+):
+    # Setup
+    client = AsyncMock()
+    body = {
+        'channel': {'name': 'general', 'id': 'C123'},
+        'user': {'id': 'U123'},
+        'actions': [{'action_id': 'summarize_since_preset', 'selected_option': {'value': '1676955600'}}],
+        'response_url': 'http://example.com/response'
+    }
+    get_direct_message_channel_id_mock.return_value = 'DM123'
+    get_channel_history_mock.return_value = ['message1', 'message2']
+    get_user_context_mock.return_value = {'user': 'info'}
+    summarize_slack_messages_mock.return_value = ('summary', 'run_id')
+    get_text_and_blocks_for_say_mock.return_value = ('text', 'blocks')
 
-#     # Execute
-#     await handler_tldr_slash_command(client, AsyncMock(), {
-#         'text': 'public',
-#         'channel_name': 'general',
-#         'channel_id': 'C123'
-#     }, say, 'U123')
+    # Execute
+    await handler_action_summarize_since_date(client, body)
 
-#     # Verify
-#     say.assert_called_once_with(text='text', blocks='blocks')
+    # Verify
+    get_direct_message_channel_id_mock.assert_called_once_with(client, 'U123')
+    get_channel_history_mock.assert_called_once_with(client, 'C123', since=datetime(2023, 2, 21, tzinfo=timezone.utc).date())
+    get_user_context_mock.assert_called_once_with(client, 'U123')
+    summarize_slack_messages_mock.assert_called_once_with(client, ['message2', 'message1'], 'C123', feature_name='summarize_since_preset', user={'user': 'info'})
+    get_text_and_blocks_for_say_mock.assert_called_once_with(
+        title='*Summary of #general* since Tuesday Feb 21, 2023 (2 messages)\n',
+        run_id='run_id',
+        messages='summary'
+    )
+    client.chat_postMessage.assert_called_with(channel='DM123', text='text', blocks='blocks')
+
+
+@pytest.mark.asyncio
+@patch('ossai.handlers.get_direct_message_channel_id')
+@patch('ossai.handlers.get_since_timeframe_presets')
+async def test_handler_tldr_since_slash_command_happy_path(get_since_timeframe_presets_mock, get_direct_message_channel_id_mock):
+    # Setup
+    client = AsyncMock()
+    client.chat_postEphemeral = AsyncMock()
+    say = AsyncMock()
+    payload = {
+        'user_id': 'U123',
+        'channel_id': 'C123',
+        'channel_name': 'general'
+    }
+    get_since_timeframe_presets_mock.return_value = {'foo': 'bar'}
+    get_direct_message_channel_id_mock.return_value = 'DM123'
+
+    # Execute
+    await handler_tldr_since_slash_command(client, payload, say)
+
+    # Verify
+    client.chat_postEphemeral.assert_called_once_with(
+        channel='C123',
+        user='U123',
+        text="Choose your summary timeframe.",
+        blocks=[
+            {
+                "type": "actions",
+                "elements": [
+                    {"foo": "bar"},
+                    {
+                        "type": "datepicker",
+                        "placeholder": {
+                            "type": "plain_text",
+                            "text": "Select a date",
+                            "emoji": True
+                        },
+                        "action_id": "summarize_since"
+                    },
+                ]
+            }
+        ]
+    )
+    say.assert_called_once_with(channel='DM123', text="In #general, choose a date or timeframe to get your summary")
+

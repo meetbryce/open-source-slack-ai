@@ -167,6 +167,7 @@ async def handler_action_summarize_since_date(client: WebClient, body):
     feature_name = body['actions'][0]['action_id']
     
     # todo: make util function for testability 
+    # todo: account for the user's timezone :melt:
     if feature_name == 'summarize_since_preset':
         since_datetime: datetime = datetime.fromtimestamp(int(body['actions'][0]['selected_option']['value'])).date()
     else:
