@@ -1,5 +1,7 @@
 import os
 
+from aiohttp import ClientSession
+from datetime import datetime
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 from langsmith import Client
@@ -14,7 +16,8 @@ from ossai.utils import (
     get_bot_id,
     get_user_context,
     get_is_private_and_channel_name,
-    get_text_and_blocks_for_say
+    get_text_and_blocks_for_say,
+    get_since_timeframe_presets
 )
 
 
@@ -137,3 +140,70 @@ async def handler_topics_slash_command(client: WebClient, ack, payload, say, use
     title = f"*Channel Overview: #{channel_name}*\n\n"
     text, blocks = get_text_and_blocks_for_say(title=title, run_id=run_id, messages=[topic_overview])
     return await say(channel=dm_channel_id, text=text, blocks=blocks)
+
+
+async def handler_tldr_since_slash_command(client: WebClient, payload, say):
+    title = "Choose your summary timeframe."
+    dm_channel_id = await get_direct_message_channel_id(client, payload['user_id'])
+    
+    client.chat_postEphemeral(channel=payload['channel_id'], user=payload['user_id'], text=title, blocks=[
+        {
+			"type": "actions",
+			"elements": [
+                get_since_timeframe_presets(),
+				{
+					"type": "datepicker",
+					"placeholder": {
+						"type": "plain_text",
+						"text": "Select a date",
+						"emoji": True
+					},
+					"action_id": "summarize_since"
+				},
+            ]
+		}
+    ])
+    
+    await say(channel=dm_channel_id, text=f'In #{payload["channel_name"]}, choose a date or timeframe to get your summary')
+
+
+async def handler_action_summarize_since_date(client: WebClient, body):
+    """
+    Provide a message summary of the channel since a given date.
+    """
+    channel_name = body['channel']['name']
+    channel_id = body['channel']['id']
+    user_id = body['user']['id']
+    feature_name = body['actions'][0]['action_id']
+    
+    # todo: make util function for testability 
+    if feature_name == 'summarize_since_preset':
+        since_datetime: datetime = datetime.fromtimestamp(int(body['actions'][0]['selected_option']['value'])).date()
+    else:
+        since_date = body['actions'][0]['selected_date']
+        since_datetime: datetime = datetime.strptime(since_date, '%Y-%m-%d').date()
+    
+    dm_channel_id = await get_direct_message_channel_id(client, user_id)
+    client.chat_postMessage(channel=dm_channel_id, text='...')
+    
+    async with ClientSession() as session:
+        await session.post(
+            body['response_url'],
+            json={"delete_original": "true"}
+        )
+    
+    try:
+        history = await get_channel_history(client, channel_id, since=since_datetime)
+        history.reverse()
+        user = await get_user_context(client, user_id)
+        summary, run_id = summarize_slack_messages(client, history, channel_id, feature_name=feature_name, user=user)
+        text, blocks = get_text_and_blocks_for_say(
+            title=f'*Summary of #{channel_name}* since {since_datetime.strftime("%A %b %-d, %Y")} ({len(history)} messages)\n',
+            run_id=run_id, 
+            messages=summary
+        )
+        # todo: somehow add date/preset choice to langsmith metadata
+        #   feature_name: str -> feature: str || Tuple[str, List(Tuple[str, str])]
+        return client.chat_postMessage(channel=dm_channel_id, text=text, blocks=blocks)
+    except SlackApiError as e:
+        return client.chat_postMessage(channel=dm_channel_id, text=f"Encountered an error: {e.response['error']}")

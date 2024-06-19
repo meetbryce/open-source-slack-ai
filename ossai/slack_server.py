@@ -11,6 +11,8 @@ from ossai.handlers import (
     handler_tldr_slash_command,
     handler_topics_slash_command,
     handler_feedback,
+    handler_tldr_since_slash_command,
+    handler_action_summarize_since_date
 )
 from ossai.utils import get_text_and_blocks_for_say
 
@@ -68,6 +70,20 @@ async def handle_slash_command_sandbox(ack, payload, say):
     title = "This is a test of the /sandbox command."
     text, blocks = get_text_and_blocks_for_say(title=title, run_id=run_id, messages=lines)
     return await say(text, blocks=blocks)
+
+
+@async_app.command("/tldr_since")
+async def handle_slash_command_tldr_since(ack, payload, say):
+    await ack()
+    return await handler_tldr_since_slash_command(client, payload, say)
+
+
+@async_app.action('summarize_since')
+@async_app.action('summarize_since_preset')
+async def handle_action_summarize_since_date(ack, body, logger):
+    await ack()
+    await handler_action_summarize_since_date(client, body)
+    return logger.info(body)
 
 
 @async_app.action("not_helpful_button")

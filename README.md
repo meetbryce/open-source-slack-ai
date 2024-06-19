@@ -1,6 +1,6 @@
 # The Open-Source Slack AI App
 
-[![Test Coverage](https://api.codeclimate.com/v1/badges/49225ada2033154b15bf/test_coverage)](https://codeclimate.com/github/meetbryce/open-source-slack-ai/test_coverage) [![Maintainability](https://api.codeclimate.com/v1/badges/49225ada2033154b15bf/maintainability)](https://codeclimate.com/github/meetbryce/open-source-slack-ai/maintainability) ![GitHub License](https://img.shields.io/github/license/meetbryce/open-source-slack-ai) [![contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](https://github.com/dwyl/esta/issues) ![X (formerly Twitter) Follow](https://img.shields.io/twitter/follow/meetbryce)
+[![Test Coverage](https://api.codeclimate.com/v1/badges/49225ada2033154b15bf/test_coverage)](https://codeclimate.com/github/meetbryce/open-source-slack-ai/test_coverage) [![Maintainability](https://api.codeclimate.com/v1/badges/49225ada2033154b15bf/maintainability)](https://codeclimate.com/github/meetbryce/open-source-slack-ai/maintainability) ![GitHub License](https://img.shields.io/github/license/meetbryce/open-source-slack-ai) [![Static Badge](https://img.shields.io/badge/repo-analytics-violet?link=https%3A%2F%2Fmeetbryce.github.io%2Fopen-source-slack-ai--gh-stats%2Fmeetbryce%2Fopen-source-slack-ai%2Flatest-report%2Freport.html)](https://meetbryce.github.io/open-source-slack-ai--gh-stats/meetbryce/open-source-slack-ai/latest-report/report.html) [![contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](https://github.com/dwyl/esta/issues) ![X (formerly Twitter) Follow](https://img.shields.io/twitter/follow/meetbryce)
 
 [//]: # (todo: youtube badge linking to walkthrough video?)
 
@@ -16,7 +16,9 @@ generate to both public and private:
 1. **Thread summaries** - Generate a detailed summary of any Slack thread (powered by GPT-3.5-Turbo)
 2. **Channel overviews** - Generate an outline of the channel's purpose based on the extended message history (powered
    by an ensemble of NLP models and a little GPT-4 to explain the analysis in natural language)
-3. **Channel summaries** (beta) - Generate a detailed summary of a channel's extended history (powered by
+3. **Channel summaries since** - Generate a detailed summary of a channel's messages since a given point in time (powered by
+   GPT-3.5-Turbo). Note: this doesn't include threads yet.
+4. **Full channel summaries** (beta) - Generate a detailed summary of a channel's extended history (powered by
    GPT-3.5-Turbo). Note: this can get very long!
 
 [//]: # (todo: demo video/gif of the 2 main features)
@@ -128,6 +130,8 @@ Please note that if you're using a virtual environment, make sure it's activated
 
 - [x] Move to LangChain & LangSmith for extensibility, tracing, & control
 - [x] leverage LangSmith's feedback capabilities to capture & learn from user feedback
+- [x] Add a `/tldr_since` command to summarize a channel's messages since a given date
+- [ ] Incorporate threaded conversations in channel-level summaries
 - [ ] Add slack app setup details and sample app manifest to README
 - [ ] Implement evals suite to complement unit tests
 - [ ] Add support for alternative and open-source LLMs

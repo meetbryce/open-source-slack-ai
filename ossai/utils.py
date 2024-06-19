@@ -1,7 +1,9 @@
 import os
 import re
 import uuid
+import time
 
+from datetime import date
 from dotenv import load_dotenv
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
@@ -40,8 +42,11 @@ async def get_bot_id(client) -> str:
         return 'None'
 
 
-async def get_channel_history(client: WebClient, channel_id: str) -> list:
-    response = client.conversations_history(channel=channel_id, limit=1000)  # 1000 is the max limit
+async def get_channel_history(client: WebClient, channel_id: str, since: date = None , include_threads:bool = False) -> list:
+    # todo: if include_threads, recursively get messages from threads
+
+    oldest_timestamp = time.mktime(since.timetuple()) if since else 0
+    response = client.conversations_history(channel=channel_id, limit=1000, oldest=oldest_timestamp)  # 1000 is the max limit
     bot_id = await get_bot_id(client)
     # todo: (optional) excluding all other bots too
     # todo: (optional) exclude messages that start with `/` (i.e. slash commands)
@@ -255,6 +260,30 @@ def get_workspace_name(client: WebClient):
     except SlackApiError as e:
         print(f"Error retrieving workspace name: {e.response['error']}")
         return os.getenv("WORKSPACE_NAME_FALLBACK", "")  # None
+
+
+def get_since_timeframe_presets():
+    options = [
+        ('Last 7 days', str(int(time.time() - 7 * 86400))),  # 86400 seconds in a day
+        ('Last 14 days', str(int(time.time() - 14 * 86400))),
+        ('Last 30 days', str(int(time.time() - 30 * 86400))),
+        ('This week', str(int(time.time() - time.localtime().tm_wday * 86400))),  # Monday at 00:00:00
+        ('Last week', str(int(time.time() - 7 * 86400 * ((time.localtime().tm_wday + 1) % 7)))),  # From the start of last week
+        ('This month', str(int(time.mktime(time.strptime(f"{time.localtime().tm_year}-{time.localtime().tm_mon}-01", "%Y-%m-%d"))))),  # From the start of this month
+        ('Last month', str(int(time.mktime(time.strptime(f"{time.localtime().tm_year}-{time.localtime().tm_mon - 1}-01", "%Y-%m-%d"))))),  # From the start of last month
+    ]
+    return {
+        "type": "static_select",
+        "placeholder": {
+            "type": "plain_text",
+            "text": "Select a preset",
+            "emoji": True
+        },
+        "action_id": "summarize_since_preset",
+        "options": [
+            { "text": { "type": "plain_text", "text": text, "emoji": True }, "value": value } for (text, value) in options
+        ]
+    }
 
 
 def main():
