@@ -199,7 +199,7 @@ def test_handler_feedback_very_helpful_button(env_get_mock, client_mock):
 
 @pytest.mark.asyncio
 @patch('ossai.handlers.get_direct_message_channel_id')
-@patch('ossai.handlers.get_bot_id')
+@patch('ossai.utils.get_bot_id')
 async def test_handler_shortcuts_channel_not_found_error(get_bot_id_mock, get_direct_message_channel_id_mock):
     # Setup
     client = MagicMock()

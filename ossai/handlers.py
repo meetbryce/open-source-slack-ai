@@ -13,11 +13,11 @@ from ossai.utils import (
     get_workspace_name,
     get_channel_history,
     get_parsed_messages,
-    get_bot_id,
     get_user_context,
     get_is_private_and_channel_name,
     get_text_and_blocks_for_say,
-    get_since_timeframe_presets
+    get_since_timeframe_presets,
+    handle_slack_api_error_with_say,
 )
 
 
@@ -71,23 +71,11 @@ async def handler_shortcuts(client: WebClient, is_private: bool, payload, say, u
             user = await get_user_context(client, user_id)
             summary, run_id = summarize_slack_messages(client, messages, channel_id, feature_name="summarize_thread", user=user)
             text, blocks = get_text_and_blocks_for_say(title=title, run_id=run_id, messages=summary)
-            try:
-                return await say(channel=channel_id_for_say, text=text, blocks=blocks)
-            except SlackApiError as e:
-                if e.response['error'] == 'channel_not_found':
-                    return await say(channel=dm_channel_id, text=text, blocks=blocks)
-                raise e
+            return await say(channel=channel_id_for_say, text=text, blocks=blocks)
         else:
             return await say(channel=channel_id_for_say, text="Sorry, couldn't fetch the message and its replies.")
     except SlackApiError as e:
-        if e.response['error'] == 'channel_not_found' or e.response['error'] == 'not_in_channel':
-            bot_id = await get_bot_id(client)
-            bot_info = client.bots_info(bot=bot_id)
-            print(bot_info)
-            bot_name = bot_info['bot']['name']
-            return await say(channel=dm_channel_id,
-                             text=f"Sorry, couldn't find the channel. Have you added `@{bot_name}` to the channel?")
-        return await say(channel=dm_channel_id, text=f"Encountered an error: {e.response['error']}")
+        return await handle_slack_api_error_with_say(client, e, dm_channel_id, say)
 
 
 async def handler_tldr_slash_command(client: WebClient, ack, payload, say, user_id: str):
@@ -116,10 +104,7 @@ async def handler_tldr_slash_command(client: WebClient, ack, payload, say, user_
             return await say(text=text, blocks=blocks)
         return await say(channel=dm_channel_id, text=text, blocks=blocks)
     except SlackApiError as e:
-        if e.response['error'] == 'channel_not_found':
-            return await say(channel=dm_channel_id,
-                             text="Sorry, couldn't find the channel. Have you added 'me' to the channel?")
-        return await say(channel=dm_channel_id, text=f"Encountered an error: {e.response['error']}")
+        return await handle_slack_api_error_with_say(client, e, dm_channel_id, say)
 
 
 async def handler_topics_slash_command(client: WebClient, ack, payload, say, user_id: str):
@@ -129,9 +114,11 @@ async def handler_topics_slash_command(client: WebClient, ack, payload, say, use
     dm_channel_id = await get_direct_message_channel_id(client, user_id)
     await say(channel=dm_channel_id, text='...')
 
-    history = await get_channel_history(client, channel_id)
-    history.reverse()
-    # END boilerplate
+    try:
+        history = await get_channel_history(client, channel_id)
+        history.reverse()
+    except SlackApiError as e:
+        return await handle_slack_api_error_with_say(client, e, dm_channel_id, say)
 
     messages = get_parsed_messages(client, history, with_names=False)
     user = await get_user_context(client, user_id)
@@ -146,9 +133,10 @@ async def handler_tldr_since_slash_command(client: WebClient, payload, say):
     title = "Choose your summary timeframe."
     dm_channel_id = await get_direct_message_channel_id(client, payload['user_id'])
     
-    client.chat_postEphemeral(channel=payload['channel_id'], user=payload['user_id'], text=title, blocks=[
-        {
-			"type": "actions",
+    try:
+        client.chat_postEphemeral(channel=payload['channel_id'], user=payload['user_id'], text=title, blocks=[
+            {
+                "type": "actions",
 			"elements": [
                 get_since_timeframe_presets(),
 				{
@@ -163,6 +151,8 @@ async def handler_tldr_since_slash_command(client: WebClient, payload, say):
             ]
 		}
     ])
+    except SlackApiError as e:
+        return await handle_slack_api_error_with_say(client, e, dm_channel_id, say)
     
     await say(channel=dm_channel_id, text=f'In #{payload["channel_name"]}, choose a date or timeframe to get your summary')
 

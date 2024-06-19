@@ -286,6 +286,16 @@ def get_since_timeframe_presets():
     }
 
 
+async def handle_slack_api_error_with_say(client: WebClient, e: SlackApiError, dm_channel_id: str, say):
+    if e.response['error'] == 'channel_not_found' or e.response['error'] == 'not_in_channel':
+            bot_id = await get_bot_id(client)
+            bot_info = client.bots_info(bot=bot_id)
+            bot_name = bot_info['bot']['name']
+            return await say(channel=dm_channel_id,
+                             text=f"Sorry, couldn't find the channel. Have you added `@{bot_name}` to the channel?")
+    return await say(channel=dm_channel_id, text=f"Encountered an error: {e.response['error']}")
+
+
 def main():
     print('DEBUGGING')
 
