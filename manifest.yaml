@@ -25,7 +25,7 @@ features:
       should_escape: false
     - command: /tldr_since
       description: "Summarize messages over a time period "
-      usage_hint: "[in beta]"
+      usage_hint: ""
       should_escape: false
 oauth_config:
   scopes:
