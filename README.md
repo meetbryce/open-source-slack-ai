@@ -100,7 +100,7 @@ and add it to your `.env` file as `SLACK_APP_TOKEN`.
 To run the application, run the FastAPI server:
 
 ```bash
-cd ossai && poetry run uvicorn slack_server:app --reload
+poetry run uvicorn ossai.slack_server:app --reload
 ```
 
 [//]: # (todo: improve the ngrok instructions)

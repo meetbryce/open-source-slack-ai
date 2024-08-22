@@ -16,7 +16,7 @@ from ossai.handlers import (
 )
 from ossai.utils import get_text_and_blocks_for_say
 
-load_dotenv()
+load_dotenv(override=True)
 app = FastAPI()
 async_app = AsyncApp(token=os.environ["SLACK_BOT_TOKEN"])
 client = WebClient(token=os.environ["SLACK_BOT_TOKEN"])
