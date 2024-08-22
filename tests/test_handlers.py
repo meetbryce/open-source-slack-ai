@@ -3,7 +3,7 @@ import uuid
 import pytest
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 from ossai.handlers import (
     handler_shortcuts,
@@ -286,6 +286,7 @@ async def test_handler_tldr_slash_command_public_extended(
 
 
 @pytest.mark.asyncio
+@patch('ossai.handlers.datetime')
 @patch('ossai.handlers.get_channel_history')
 @patch('ossai.handlers.get_user_context')
 @patch('ossai.handlers.summarize_slack_messages')
@@ -296,7 +297,8 @@ async def test_handler_action_summarize_since_date(
     get_text_and_blocks_for_say_mock,
     summarize_slack_messages_mock,
     get_user_context_mock,
-    get_channel_history_mock
+    get_channel_history_mock,
+    datetime_mock
 ):
     # Setup
     client = AsyncMock()
@@ -312,12 +314,17 @@ async def test_handler_action_summarize_since_date(
     summarize_slack_messages_mock.return_value = ('summary', 'run_id')
     get_text_and_blocks_for_say_mock.return_value = ('text', 'blocks')
 
+    # Mock datetime to return a fixed date
+    mocked_date = datetime(2023, 2, 21, tzinfo=timezone.utc)
+    datetime_mock.fromtimestamp.return_value = mocked_date
+
     # Execute
     await handler_action_summarize_since_date(client, body)
 
     # Verify
     get_direct_message_channel_id_mock.assert_called_once_with(client, 'U123')
-    get_channel_history_mock.assert_called_once_with(client, 'C123', since=datetime(2023, 2, 21, tzinfo=timezone.utc).date())
+    datetime_mock.fromtimestamp.assert_called_once_with(1676955600)
+    get_channel_history_mock.assert_called_once_with(client, 'C123', since=mocked_date.date())
     get_user_context_mock.assert_called_once_with(client, 'U123')
     summarize_slack_messages_mock.assert_called_once_with(client, ['message2', 'message1'], 'C123', feature_name='summarize_since_preset', user={'user': 'info'})
     get_text_and_blocks_for_say_mock.assert_called_once_with(
