@@ -45,7 +45,7 @@ purposes.
 
 Ensure you have the following preconfigured or installed on your local development machine:
 
-- Python 3.8 or higher
+- Python 3.9.x - 3.11.x
 - OpenAI API key
 - Slack App & associated API tokens
 - [Poetry package manager](https://python-poetry.org/docs/#installation)
