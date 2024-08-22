@@ -10,7 +10,7 @@ from langchain_core.prompts import ChatPromptTemplate
 
 from ossai.utils import get_parsed_messages, get_langsmith_config, get_llm_config, get_is_private_and_channel_name
 
-load_dotenv()
+load_dotenv(override=True)
 
 def summarize(
         text: str, 

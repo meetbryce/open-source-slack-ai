@@ -18,7 +18,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 
 from ossai.utils import get_llm_config, get_langsmith_config
 
-load_dotenv()
+load_dotenv(override=True)
 nltk.download("stopwords")
 try:
     nlp = spacy.load(

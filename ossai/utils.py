@@ -10,7 +10,7 @@ from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 from langchain.callbacks.tracers import LangChainTracer
 
-load_dotenv()
+load_dotenv(override=True)
 _id_name_cache = {}
 
 
