@@ -1,6 +1,11 @@
 import os
+import asyncio
+from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
+
+load_dotenv(override=True)
+
 from fastapi import FastAPI, Request
 from slack_bolt.adapter.socket_mode.aiohttp import AsyncSocketModeHandler
 from slack_bolt.async_app import AsyncApp
@@ -16,11 +21,34 @@ from ossai.handlers import (
 )
 from ossai.utils import get_text_and_blocks_for_say
 
-load_dotenv(override=True)
 app = FastAPI()
 async_app = AsyncApp(token=os.environ["SLACK_BOT_TOKEN"])
 client = WebClient(token=os.environ["SLACK_BOT_TOKEN"])
-socket_handler = AsyncSocketModeHandler(async_app, os.environ["SLACK_APP_TOKEN"])
+socket_handler = None
+
+async def create_socket_handler():
+    return AsyncSocketModeHandler(async_app, os.environ["SLACK_APP_TOKEN"])
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global socket_handler
+    socket_handler = await create_socket_handler()
+    try:
+        await socket_handler.connect_async()
+        yield
+    finally:
+        if socket_handler:
+            await socket_handler.disconnect_async()
+            if hasattr(socket_handler, 'client') and hasattr(socket_handler.client, 'aiohttp_client_session'):
+                await socket_handler.client.aiohttp_client_session.close()
+
+        # Cancel all running tasks
+        tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
+        for task in tasks:
+            task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+
+app = FastAPI(lifespan=lifespan)
 
 
 @app.get("/pulse")
@@ -37,16 +65,6 @@ async def slack_events(request: Request):
         return {'challenge': event['challenge']}
     
     return {"status": 401, "message": "Unauthorized"}
-
-
-@app.on_event("startup")
-async def startup():
-    await socket_handler.connect_async()  # todo: this is not ideal for # of workers > 1.
-
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    await socket_handler.disconnect_async()
 
 
 @async_app.command("/tldr_extended")
