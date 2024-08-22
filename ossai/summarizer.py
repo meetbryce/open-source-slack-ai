@@ -194,6 +194,9 @@ def summarize_slack_messages(
         except openai.RateLimitError as e:
             print(e)
             return [f"Sorry, OpenAI rate limit exceeded..."], None
+        except openai.AuthenticationError as e:
+            print(e)
+            return ['Sorry, unable to authenticate with OpenAI'], None
         result_text.append(text)
 
     return result_text, run_id

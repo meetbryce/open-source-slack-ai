@@ -178,48 +178,50 @@ def get_parsed_messages(client, messages, with_names=True):
     return [parse_message(message) for message in messages]
 
 
-def get_text_and_blocks_for_say(title:str, run_id: uuid.UUID, messages: list) -> tuple[str, list]:
+def get_text_and_blocks_for_say(title: str, run_id: uuid.UUID | None, messages: list) -> tuple[str, list]:
     text = '\n'.join(messages)
 
     blocks = [
         {
-			"type": "section",
-			"text": {
-				"type": "mrkdwn",
-				"text": title,
-			}
-		},
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": title,
+            }
+        },
         {
             "type": "section",
             "text": {
                 "type": "mrkdwn",
                 "text": text,
             },
-        },
-        {
+        }
+    ]
+
+    if run_id is not None:
+        blocks.append({
             "type": "actions",
             "elements": [
                 {
                     "type": "button",
                     "text": {"type": "plain_text", "text": ":-1: Not Helpful"},
                     "action_id": "not_helpful_button",
-                    "value": run_id
+                    "value": str(run_id)
                 },
                 {
                     "type": "button",
                     "text": {"type": "plain_text", "text": ":+1: Helpful"},
                     "action_id": "helpful_button",
-                    "value": run_id
+                    "value": str(run_id)
                 },
                 {
                     "type": "button",
                     "text": {"type": "plain_text", "text": ":tada: Very Helpful"},
                     "action_id": "very_helpful_button",
-                    "value": run_id
+                    "value": str(run_id)
                 },
             ]
-        }
-    ]
+        })
 
     return text.split('\n')[0], blocks
 
