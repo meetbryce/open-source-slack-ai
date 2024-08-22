@@ -123,6 +123,7 @@ async def handler_topics_slash_command(client: WebClient, ack, payload, say, use
     messages = get_parsed_messages(client, history, with_names=False)
     user = await get_user_context(client, user_id)
     is_private, channel_name = get_is_private_and_channel_name(client, channel_id)
+    # fixme: give the user an error if not enough messages (>=6)
     topic_overview, run_id = await analyze_topics_of_history(channel_name, messages, user=user, is_private=is_private)
     title = f"*Channel Overview: #{channel_name}*\n\n"
     text, blocks = get_text_and_blocks_for_say(title=title, run_id=run_id, messages=[topic_overview])
