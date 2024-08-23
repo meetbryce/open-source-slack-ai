@@ -3,6 +3,7 @@ import re
 import uuid
 from time import mktime, gmtime, strptime
 import calendar
+from typing import Union
 
 from datetime import date
 from dotenv import load_dotenv
@@ -200,7 +201,7 @@ def get_parsed_messages(client, messages, with_names=True):
 
 
 def get_text_and_blocks_for_say(
-    title: str, run_id: uuid.UUID | None, messages: list
+    title: str, run_id: Union[uuid.UUID, None], messages: list
 ) -> tuple[str, list]:
     text = "\n".join(messages)
 
