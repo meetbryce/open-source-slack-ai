@@ -25,12 +25,17 @@ try:
         "en_core_web_md"
     )  # `poetry add {download link}` from https://spacy.io/models/en#en_core_web_md
 except:
-    print("Downloading language model for the spaCy POS tagger (don't worry, this will only happen once)")
+    print(
+        "Downloading language model for the spaCy POS tagger (don't worry, this will only happen once)"
+    )
     from spacy.cli import download
-    download('en_core_web_md')
-    nlp = spacy.load('en_core_web_md')
+
+    download("en_core_web_md")
+    nlp = spacy.load("en_core_web_md")
 config = get_llm_config()
-TEMPERATURE = float(config['temperature']) + 0.1  # a little more creativity is beneficial here
+TEMPERATURE = (
+    float(config["temperature"]) + 0.1
+)  # a little more creativity is beneficial here
 DEBUG = bool(os.environ.get("DEBUG", False))
 
 
@@ -86,7 +91,9 @@ async def _lda_topics(messages, num_topics, stop_words):
     return topics
 
 
-async def _synthesize_topics(topics_str: str, channel: str, user: str, is_private: bool = False) -> tuple[str, UUID]:
+async def _synthesize_topics(
+    topics_str: str, channel: str, user: str, is_private: bool = False
+) -> tuple[str, UUID]:
     system_msg = """\
     You are a topic analysis expert, synthesizing the results of various topic analysis methods conducted on a Slack channel's message history. 
     You write conversationally and never use technical terms like KMeans, LDA, clustering, or LSA. 
@@ -110,35 +117,37 @@ async def _synthesize_topics(topics_str: str, channel: str, user: str, is_privat
     model = ChatOpenAI(model=config["chat_model"], temperature=config["temperature"])
 
     prompt_template = ChatPromptTemplate.from_messages(
-        [('system', system_msg), ('user', user_msg)]
+        [("system", system_msg), ("user", user_msg)]
     )
 
     parser = StrOutputParser()
     chain = prompt_template | model | parser  # todo: add privacy mode
 
     langsmith_config = get_langsmith_config(
-        feature_name='channel_topics',
+        feature_name="channel_topics",
         user=user,
         channel=channel,
         is_private=is_private,
     )
     print(f"{langsmith_config=}")
-    result = chain.invoke({'topics_str': topics_str, 'channel': channel}, config=langsmith_config)
+    result = chain.invoke(
+        {"topics_str": topics_str, "channel": channel}, config=langsmith_config
+    )
     print(result)
 
     # parse the message reformat it for delivery via Slack message
     result = result.replace("\n* ", "\n- ")
     result = result.replace("**", "*")
 
-    return result, langsmith_config['run_id']
+    return result, langsmith_config["run_id"]
 
 
 async def analyze_topics_of_history(
-    channel_name: str, 
-    messages, 
-    user: str, 
-    num_topics: int = 6, 
-    is_private: bool = False
+    channel_name: str,
+    messages,
+    user: str,
+    num_topics: int = 6,
+    is_private: bool = False,
 ) -> str:
     # Remove URLs
     messages = [re.sub(r"http\S+", "", message) for message in messages]

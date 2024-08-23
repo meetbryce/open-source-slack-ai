@@ -8,17 +8,23 @@ from langchain_openai import ChatOpenAI
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 
-from ossai.utils import get_parsed_messages, get_langsmith_config, get_llm_config, get_is_private_and_channel_name
+from ossai.utils import (
+    get_parsed_messages,
+    get_langsmith_config,
+    get_llm_config,
+    get_is_private_and_channel_name,
+)
 
 load_dotenv(override=True)
 
+
 def summarize(
-        text: str, 
-        feature_name: str, 
-        user: str, 
-        channel: str,  
-        is_private: bool = False, 
-    ) -> tuple[str, UUID]:
+    text: str,
+    feature_name: str,
+    user: str,
+    channel: str,
+    is_private: bool = False,
+) -> tuple[str, UUID]:
     """
     Summarize a chat log in bullet points, in the specified language.
 
@@ -58,13 +64,13 @@ def summarize(
 
     config = get_llm_config()
     model = ChatOpenAI(model=config["chat_model"], temperature=config["temperature"])
-    
+
     prompt_template = ChatPromptTemplate.from_messages(
-        [('system', system_msg), ('user', human_msg)]
+        [("system", system_msg), ("user", human_msg)]
     )
 
     parser = StrOutputParser()
-    chain = prompt_template | model | parser 
+    chain = prompt_template | model | parser
 
     # Attach the context to the chain invocation
     langsmith_config = get_langsmith_config(
@@ -74,9 +80,10 @@ def summarize(
         is_private=is_private,
     )
     print(f"{langsmith_config=}")
-    result = chain.invoke({'text': text, 'language': config["language"]}, config=langsmith_config)
-    return result, langsmith_config['run_id']
-
+    result = chain.invoke(
+        {"text": text, "language": config["language"]}, config=langsmith_config
+    )
+    return result, langsmith_config["run_id"]
 
 
 def estimate_openai_chat_token_count(text: str) -> int:
@@ -154,17 +161,17 @@ def split_messages_by_token_count(client, messages: list[dict]) -> list[list[str
 
 
 def summarize_slack_messages(
-        client, 
-        messages: list, 
-        channel_id: str,
-        feature_name: str, 
-        user: str, 
-    ) -> tuple[list, UUID]:
+    client,
+    messages: list,
+    channel_id: str,
+    feature_name: str,
+    user: str,
+) -> tuple[list, UUID]:
     """
     Summarize a list of slack messages.
 
-    This function takes a list of slack messages, a context message, and the channel ID, splits the 
-    messages into sublists based on token count, and then summarizes each sublist. 
+    This function takes a list of slack messages, a context message, and the channel ID, splits the
+    messages into sublists based on token count, and then summarizes each sublist.
     The summary is returned as a list, with the context message as the first element.
 
     Args:
@@ -185,10 +192,10 @@ def summarize_slack_messages(
     for message_split in message_splits:
         try:
             text, run_id = summarize(
-                "\n".join(message_split), 
-                feature_name=feature_name, 
-                user=user, 
-                channel=channel_name, 
+                "\n".join(message_split),
+                feature_name=feature_name,
+                user=user,
+                channel=channel_name,
                 is_private=is_private,
             )
         except openai.RateLimitError as e:
@@ -196,7 +203,7 @@ def summarize_slack_messages(
             return [f"Sorry, OpenAI rate limit exceeded..."], None
         except openai.AuthenticationError as e:
             print(e)
-            return ['Sorry, unable to authenticate with OpenAI'], None
+            return ["Sorry, unable to authenticate with OpenAI"], None
         result_text.append(text)
 
     return result_text, run_id

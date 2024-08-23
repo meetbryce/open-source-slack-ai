@@ -21,11 +21,11 @@ class CustomLangChainTracer(LangChainTracer):
 
     def handleText(self, text, runId):
         if not self.is_private:
-            print('passing text')
+            print("passing text")
             super().handleText(text, runId)
         else:
-            print('passing no text')
-            super().handleText('', runId)
+            print("passing no text")
+            super().handleText("", runId)
 
 
 async def get_bot_id(client) -> str:
@@ -40,14 +40,21 @@ async def get_bot_id(client) -> str:
         return response["bot_id"]
     except SlackApiError as e:
         print(f"Error fetching bot ID: {e.response['error']}")
-        return 'None'
+        return "None"
 
 
-async def get_channel_history(client: WebClient, channel_id: str, since: date = None , include_threads:bool = False) -> list:
+async def get_channel_history(
+    client: WebClient,
+    channel_id: str,
+    since: date = None,
+    include_threads: bool = False,
+) -> list:
     # todo: if include_threads, recursively get messages from threads
 
     oldest_timestamp = mktime(since.timetuple()) if since else 0
-    response = client.conversations_history(channel=channel_id, limit=1000, oldest=oldest_timestamp)  # 1000 is the max limit
+    response = client.conversations_history(
+        channel=channel_id, limit=1000, oldest=oldest_timestamp
+    )  # 1000 is the max limit
     bot_id = await get_bot_id(client)
     # todo: (optional) excluding all other bots too
     # todo: (optional) exclude messages that start with `/` (i.e. slash commands)
@@ -66,34 +73,38 @@ async def get_direct_message_channel_id(client: WebClient, user_id: str) -> str:
     except SlackApiError as e:
         print(f"Error fetching bot DM channel ID: {e.response['error']}")
         raise e
-    
 
-def get_is_private_and_channel_name(client: WebClient, channel_id: str) -> tuple[bool, str]:
+
+def get_is_private_and_channel_name(
+    client: WebClient, channel_id: str
+) -> tuple[bool, str]:
     try:
         channel_info = client.conversations_info(channel=channel_id)
-        channel_name = channel_info['channel']['name']  
-        is_private = channel_info['channel']['is_private']
+        channel_name = channel_info["channel"]["name"]
+        is_private = channel_info["channel"]["is_private"]
     except Exception as e:
         print(f"Error getting channel info for is_private, defaulting to private: {e}")
         channel_name = "unknown"
-        is_private = True    
+        is_private = True
     return is_private, channel_name
 
 
-def get_langsmith_config(feature_name:str, user:dict, channel:str, is_private=False):
+def get_langsmith_config(feature_name: str, user: dict, channel: str, is_private=False):
     run_id = str(uuid.uuid4())
-    tracer = CustomLangChainTracer(is_private=is_private)  # FIXME: this doesn't add privacy like it should
-    
+    tracer = CustomLangChainTracer(
+        is_private=is_private
+    )  # FIXME: this doesn't add privacy like it should
+
     return {
         "run_id": run_id,
         "metadata": {
             "is_private": is_private,
-            **({"user_name": user.get('name')} if 'name' in user else {}),
-            **({"user_title": user.get('title')} if 'title' in user else {}),
+            **({"user_name": user.get("name")} if "name" in user else {}),
+            **({"user_title": user.get("title")} if "title" in user else {}),
             "channel": channel,
         },
         "tags": [feature_name],
-        "callbacks": [tracer]
+        "callbacks": [tracer],
     }
 
 
@@ -135,11 +146,13 @@ def get_name_from_id(client: WebClient, user_or_bot_id: str, is_bot=False) -> st
     try:
         user_response = client.users_info(user=user_or_bot_id)
         if user_response.get("ok"):
-            name = user_response["user"].get("real_name", user_response["user"]["profile"]["real_name"])
+            name = user_response["user"].get(
+                "real_name", user_response["user"]["profile"]["real_name"]
+            )
             _id_name_cache[user_or_bot_id] = name
             return name
         else:
-            print('user fetch failed')
+            print("user fetch failed")
             raise SlackApiError("user fetch failed", user_response)
     except SlackApiError as e:
         if e.response["error"] == "user_not_found":
@@ -149,13 +162,15 @@ def get_name_from_id(client: WebClient, user_or_bot_id: str, is_bot=False) -> st
                     _id_name_cache[user_or_bot_id] = bot_response["bot"]["name"]
                     return bot_response["bot"]["name"]
                 else:
-                    print('bot fetch failed')
+                    print("bot fetch failed")
                     raise SlackApiError("bot fetch failed", bot_response)
             except SlackApiError as e2:
-                print(f"Error fetching name for bot {user_or_bot_id=}: {e2.response['error']}")
+                print(
+                    f"Error fetching name for bot {user_or_bot_id=}: {e2.response['error']}"
+                )
         print(f"Error fetching name for {user_or_bot_id=} {is_bot=} {e=}")
 
-    return 'Someone'
+    return "Someone"
 
 
 def get_parsed_messages(client, messages, with_names=True):
@@ -168,18 +183,26 @@ def get_parsed_messages(client, messages, with_names=True):
             name = get_name_from_id(client, user_id)
 
         # substitute @mentions with names
-        parsed_message = re.sub(r'<@[UB]\w+>', lambda m: get_name_from_id(client, m.group(0)[2:-1]), msg["text"])
+        parsed_message = re.sub(
+            r"<@[UB]\w+>",
+            lambda m: get_name_from_id(client, m.group(0)[2:-1]),
+            msg["text"],
+        )
 
         if not with_names:
-            return re.sub(r'<@[UB]\w+>', lambda m: '', msg["text"])  # remove @mentions + don't prepend author name
+            return re.sub(
+                r"<@[UB]\w+>", lambda m: "", msg["text"]
+            )  # remove @mentions + don't prepend author name
 
-        return f'{name}: {parsed_message}'
+        return f"{name}: {parsed_message}"
 
     return [parse_message(message) for message in messages]
 
 
-def get_text_and_blocks_for_say(title: str, run_id: uuid.UUID | None, messages: list) -> tuple[str, list]:
-    text = '\n'.join(messages)
+def get_text_and_blocks_for_say(
+    title: str, run_id: uuid.UUID | None, messages: list
+) -> tuple[str, list]:
+    text = "\n".join(messages)
 
     blocks = [
         {
@@ -187,7 +210,7 @@ def get_text_and_blocks_for_say(title: str, run_id: uuid.UUID | None, messages: 
             "text": {
                 "type": "mrkdwn",
                 "text": title,
-            }
+            },
         },
         {
             "type": "section",
@@ -195,48 +218,50 @@ def get_text_and_blocks_for_say(title: str, run_id: uuid.UUID | None, messages: 
                 "type": "mrkdwn",
                 "text": text,
             },
-        }
+        },
     ]
 
     if run_id is not None:
-        blocks.append({
-            "type": "actions",
-            "elements": [
-                {
-                    "type": "button",
-                    "text": {"type": "plain_text", "text": ":-1: Not Helpful"},
-                    "action_id": "not_helpful_button",
-                    "value": str(run_id)
-                },
-                {
-                    "type": "button",
-                    "text": {"type": "plain_text", "text": ":+1: Helpful"},
-                    "action_id": "helpful_button",
-                    "value": str(run_id)
-                },
-                {
-                    "type": "button",
-                    "text": {"type": "plain_text", "text": ":tada: Very Helpful"},
-                    "action_id": "very_helpful_button",
-                    "value": str(run_id)
-                },
-            ]
-        })
+        blocks.append(
+            {
+                "type": "actions",
+                "elements": [
+                    {
+                        "type": "button",
+                        "text": {"type": "plain_text", "text": ":-1: Not Helpful"},
+                        "action_id": "not_helpful_button",
+                        "value": str(run_id),
+                    },
+                    {
+                        "type": "button",
+                        "text": {"type": "plain_text", "text": ":+1: Helpful"},
+                        "action_id": "helpful_button",
+                        "value": str(run_id),
+                    },
+                    {
+                        "type": "button",
+                        "text": {"type": "plain_text", "text": ":tada: Very Helpful"},
+                        "action_id": "very_helpful_button",
+                        "value": str(run_id),
+                    },
+                ],
+            }
+        )
 
-    return text.split('\n')[0], blocks
+    return text.split("\n")[0], blocks
 
 
 async def get_user_context(client: WebClient, user_id: str) -> dict:
     """
-    Get the username and title for the given user ID. 
+    Get the username and title for the given user ID.
     """
     try:
         user_info = client.users_info(user=user_id)
         print(user_info)
-        if user_info['ok']:
-            name = user_info['user']['name']
-            title = user_info['user']['profile']['title']
-            return {'name': name, 'title': title}
+        if user_info["ok"]:
+            name = user_info["user"]["name"]
+            title = user_info["user"]["profile"]["title"]
+            return {"name": name, "title": title}
     except SlackApiError as e:
         print(f"Failed to fetch username: {e}")
         return {}
@@ -268,43 +293,75 @@ def get_workspace_name(client: WebClient):
 def get_since_timeframe_presets():
     DAY_OF_SECONDS = 86400
     now = gmtime()
-    today = calendar.timegm(strptime(f"{now.tm_year}-{now.tm_mon}-{now.tm_mday}", "%Y-%m-%d"))
+    today = calendar.timegm(
+        strptime(f"{now.tm_year}-{now.tm_mon}-{now.tm_mday}", "%Y-%m-%d")
+    )
     options = [
-        ('Last 7 days', str(today - 7 * DAY_OF_SECONDS)),
-        ('Last 14 days', str(today - 14 * DAY_OF_SECONDS)),
-        ('Last 30 days', str(today - 30 * DAY_OF_SECONDS)),
-        ('This week', str(today - (now.tm_wday * DAY_OF_SECONDS))),  # Monday at 00:00:00
-        ('Last week', str(today - (now.tm_wday * DAY_OF_SECONDS) - 7 * DAY_OF_SECONDS)),  # From the start of last week
-        ('This month', str(calendar.timegm(strptime(f"{now.tm_year}-{now.tm_mon}-01", "%Y-%m-%d")))),  # From the start of this month
-        ('Last month', str(calendar.timegm(strptime(f"{now.tm_year if now.tm_mon > 1 else now.tm_year - 1}-{now.tm_mon - 1 if now.tm_mon > 1 else 12}-01", "%Y-%m-%d")))),  # From the start of last month
+        ("Last 7 days", str(today - 7 * DAY_OF_SECONDS)),
+        ("Last 14 days", str(today - 14 * DAY_OF_SECONDS)),
+        ("Last 30 days", str(today - 30 * DAY_OF_SECONDS)),
+        (
+            "This week",
+            str(today - (now.tm_wday * DAY_OF_SECONDS)),
+        ),  # Monday at 00:00:00
+        (
+            "Last week",
+            str(today - (now.tm_wday * DAY_OF_SECONDS) - 7 * DAY_OF_SECONDS),
+        ),  # From the start of last week
+        (
+            "This month",
+            str(
+                calendar.timegm(strptime(f"{now.tm_year}-{now.tm_mon}-01", "%Y-%m-%d"))
+            ),
+        ),  # From the start of this month
+        (
+            "Last month",
+            str(
+                calendar.timegm(
+                    strptime(
+                        f"{now.tm_year if now.tm_mon > 1 else now.tm_year - 1}-{now.tm_mon - 1 if now.tm_mon > 1 else 12}-01",
+                        "%Y-%m-%d",
+                    )
+                )
+            ),
+        ),  # From the start of last month
     ]
     return {
         "type": "static_select",
-        "placeholder": {
-            "type": "plain_text",
-            "text": "Select a preset",
-            "emoji": True
-        },
+        "placeholder": {"type": "plain_text", "text": "Select a preset", "emoji": True},
         "action_id": "summarize_since_preset",
         "options": [
-            { "text": { "type": "plain_text", "text": text, "emoji": True }, "value": value } for (text, value) in options
-        ]
+            {
+                "text": {"type": "plain_text", "text": text, "emoji": True},
+                "value": value,
+            }
+            for (text, value) in options
+        ],
     }
 
 
-async def handle_slack_api_error_with_say(client: WebClient, e: SlackApiError, dm_channel_id: str, say):
-    if e.response['error'] == 'channel_not_found' or e.response['error'] == 'not_in_channel':
-            bot_id = await get_bot_id(client)
-            bot_info = client.bots_info(bot=bot_id)
-            bot_name = bot_info['bot']['name']
-            return await say(channel=dm_channel_id,
-                             text=f"Sorry, couldn't find the channel. Have you added `@{bot_name}` to the channel?")
-    return await say(channel=dm_channel_id, text=f"Encountered an error: {e.response['error']}")
+async def handle_slack_api_error_with_say(
+    client: WebClient, e: SlackApiError, dm_channel_id: str, say
+):
+    if (
+        e.response["error"] == "channel_not_found"
+        or e.response["error"] == "not_in_channel"
+    ):
+        bot_id = await get_bot_id(client)
+        bot_info = client.bots_info(bot=bot_id)
+        bot_name = bot_info["bot"]["name"]
+        return await say(
+            channel=dm_channel_id,
+            text=f"Sorry, couldn't find the channel. Have you added `@{bot_name}` to the channel?",
+        )
+    return await say(
+        channel=dm_channel_id, text=f"Encountered an error: {e.response['error']}"
+    )
 
 
 def main():
-    print('DEBUGGING')
+    print("DEBUGGING")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

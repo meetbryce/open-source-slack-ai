@@ -19,10 +19,10 @@ alien species and grappling with the paradoxes of time travel. "Futurama" clever
 philosophical questions, challenging audiences to consider the impact of technology on society and the human 
 condition."""
 
-    corpus = corpus.replace('\n', '')
+    corpus = corpus.replace("\n", "")
     # split `corpus` into an array of sentences, then split each sentence into an array of words
     # structured as a Message object
-    return [message.strip() for message in corpus.split('.')[:-1]]
+    return [message.strip() for message in corpus.split(".")[:-1]]
 
 
 @pytest.fixture
@@ -32,7 +32,7 @@ def num_topics():
 
 @pytest.fixture
 def terms():
-    return ['term1', 'term2', 'term3']
+    return ["term1", "term2", "term3"]
 
 
 @pytest.fixture
@@ -42,7 +42,7 @@ def tfidf_matrix():
 
 @pytest.fixture
 def stop_words():
-    return {'a', 'an', 'the', 'Futurama'}
+    return {"a", "an", "the", "Futurama"}
 
 
 # Tests
@@ -70,7 +70,9 @@ async def test_lda_topics(messages, num_topics, stop_words):
 @pytest.mark.asyncio
 async def test_synthesize_topics(monkeypatch):
     # Setup test data
-    topics_str = "KMeans Results:\n - term1, term2, term3\nLSA Results:\n - term4, term5, term1"
+    topics_str = (
+        "KMeans Results:\n - term1, term2, term3\nLSA Results:\n - term4, term5, term1"
+    )
     channel = "test_channel"
     user = {"name": "testuser", "title": "developer"}
     is_private = False
@@ -92,24 +94,35 @@ async def test_synthesize_topics(monkeypatch):
     monkeypatch.setattr(topic_analysis, "StrOutputParser", MockStrOutputParser)
 
     # Call the function
-    (result, run_id) = await topic_analysis._synthesize_topics(topics_str, channel, user, is_private)
+    (result, run_id) = await topic_analysis._synthesize_topics(
+        topics_str, channel, user, is_private
+    )
 
     # Assertions
     assert result == "- term1, term2, term3\n- term4, term5, term1"
     assert isinstance(run_id, str)
-    assert re.match(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$', run_id) is not None
+    assert (
+        re.match(
+            r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+            run_id,
+        )
+        is not None
+    )
 
 
-
-@patch('ossai.topic_analysis._synthesize_topics')
-@patch('ossai.topic_analysis._lda_topics')
-@patch('ossai.topic_analysis._lsa_topics')
-@patch('ossai.topic_analysis._kmeans_topics')
+@patch("ossai.topic_analysis._synthesize_topics")
+@patch("ossai.topic_analysis._lda_topics")
+@patch("ossai.topic_analysis._lsa_topics")
+@patch("ossai.topic_analysis._kmeans_topics")
 @pytest.mark.asyncio
-async def test_analyze_topics_of_history(mock_kmeans, mock_lsa, mock_lda, mock_synthesize, messages, num_topics):
-    mock_kmeans.return_value = {'topic1': ['term1', 'term2', 'term3']}
-    mock_lsa.return_value = {'topic2': ['term4', 'term5', 'term1']}
-    mock_lda.return_value = {'topic3': ['term1', 'term6', 'term7']}
-    mock_synthesize.return_value = 'synthesized topics'
-    result = await topic_analysis.analyze_topics_of_history('channel_name', messages, num_topics)
+async def test_analyze_topics_of_history(
+    mock_kmeans, mock_lsa, mock_lda, mock_synthesize, messages, num_topics
+):
+    mock_kmeans.return_value = {"topic1": ["term1", "term2", "term3"]}
+    mock_lsa.return_value = {"topic2": ["term4", "term5", "term1"]}
+    mock_lda.return_value = {"topic3": ["term1", "term6", "term7"]}
+    mock_synthesize.return_value = "synthesized topics"
+    result = await topic_analysis.analyze_topics_of_history(
+        "channel_name", messages, num_topics
+    )
     assert isinstance(result, str)

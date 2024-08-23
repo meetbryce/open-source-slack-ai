@@ -17,7 +17,7 @@ from ossai.handlers import (
     handler_topics_slash_command,
     handler_feedback,
     handler_tldr_since_slash_command,
-    handler_action_summarize_since_date
+    handler_action_summarize_since_date,
 )
 from ossai.utils import get_text_and_blocks_for_say
 
@@ -26,8 +26,10 @@ async_app = AsyncApp(token=os.environ["SLACK_BOT_TOKEN"])
 client = WebClient(token=os.environ["SLACK_BOT_TOKEN"])
 socket_handler = None
 
+
 async def create_socket_handler():
     return AsyncSocketModeHandler(async_app, os.environ["SLACK_APP_TOKEN"])
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -39,7 +41,9 @@ async def lifespan(app: FastAPI):
     finally:
         if socket_handler:
             await socket_handler.disconnect_async()
-            if hasattr(socket_handler, 'client') and hasattr(socket_handler.client, 'aiohttp_client_session'):
+            if hasattr(socket_handler, "client") and hasattr(
+                socket_handler.client, "aiohttp_client_session"
+            ):
                 await socket_handler.client.aiohttp_client_session.close()
 
         # Cancel all running tasks
@@ -47,6 +51,7 @@ async def lifespan(app: FastAPI):
         for task in tasks:
             task.cancel()
         await asyncio.gather(*tasks, return_exceptions=True)
+
 
 app = FastAPI(lifespan=lifespan)
 
@@ -61,32 +66,39 @@ def pulse():
 async def slack_events(request: Request):
     event = await request.json()
 
-    if event.get('type') == 'url_verification':
-        return {'challenge': event['challenge']}
-    
+    if event.get("type") == "url_verification":
+        return {"challenge": event["challenge"]}
+
     return {"status": 401, "message": "Unauthorized"}
 
 
 @async_app.command("/tldr_extended")
 async def handle_tldr_slash_command(ack, payload, say):
-    return await handler_tldr_slash_command(client, ack, payload, say, user_id=payload['user_id'])
+    return await handler_tldr_slash_command(
+        client, ack, payload, say, user_id=payload["user_id"]
+    )
 
 
 @async_app.command("/tldr")
 async def handle_slash_command_topics(ack, payload, say):
-    return await handler_topics_slash_command(client, ack, payload, say, user_id=payload['user_id'])
+    return await handler_topics_slash_command(
+        client, ack, payload, say, user_id=payload["user_id"]
+    )
 
 
 @async_app.command("/sandbox")
 async def handle_slash_command_sandbox(ack, payload, say):
-    await ack('...')
+    await ack("...")
     import uuid
+
     run_id = str(uuid.uuid4())
 
     text = """-- Useful summary of content goes here --"""
-    lines = text.strip().split('\n')
+    lines = text.strip().split("\n")
     title = "This is a test of the /sandbox command."
-    text, blocks = get_text_and_blocks_for_say(title=title, run_id=run_id, messages=lines)
+    text, blocks = get_text_and_blocks_for_say(
+        title=title, run_id=run_id, messages=lines
+    )
     return await say(text, blocks=blocks)
 
 
@@ -96,8 +108,8 @@ async def handle_slash_command_tldr_since(ack, payload, say):
     return await handler_tldr_since_slash_command(client, payload, say)
 
 
-@async_app.action('summarize_since')
-@async_app.action('summarize_since_preset')
+@async_app.action("summarize_since")
+@async_app.action("summarize_since_preset")
 async def handle_action_summarize_since_date(ack, body, logger):
     await ack()
     await handler_action_summarize_since_date(client, body)
@@ -108,7 +120,7 @@ async def handle_action_summarize_since_date(ack, body, logger):
 @async_app.action("helpful_button")
 @async_app.action("very_helpful_button")
 async def handle_feedback(ack, body, logger):
-    await ack('...')
+    await ack("...")
     handler_feedback(body)
     return logger.info(body)
 
@@ -116,13 +128,13 @@ async def handle_feedback(ack, body, logger):
 @async_app.shortcut("thread")
 async def handle_thread_shortcut(ack, payload, say):
     await ack()
-    await handler_shortcuts(client, False, payload, say, user_id=payload['user']['id'])
+    await handler_shortcuts(client, False, payload, say, user_id=payload["user"]["id"])
 
 
 @async_app.shortcut("thread_private")
 async def handle_thread_private_shortcut(ack, payload, say):
     await ack()
-    await handler_shortcuts(client, True, payload, say, user_id=payload['user']['id'])
+    await handler_shortcuts(client, True, payload, say, user_id=payload["user"]["id"])
 
 
 if __name__ == "__main__":
