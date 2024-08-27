@@ -14,6 +14,9 @@ from ossai.handlers import (
     handler_tldr_since_slash_command,
 )
 
+# fixme: test safe_slack_api_call
+# fixme: assert each of the main handlers calls safe_slack_api_call with the right args
+
 
 @pytest.fixture
 def client():

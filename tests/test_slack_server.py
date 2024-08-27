@@ -53,23 +53,21 @@ def test_main_loads_as_script(mock_app_advanced, mock_uvicorn, mock_os_environ, 
 
 
 @pytest.mark.asyncio
-@patch("ossai.slack_server.get_text_and_blocks_for_say")
-async def test_handle_slash_command_sandbox(mock_get_text_and_blocks_for_say):
+@patch('ossai.slack_server.client')
+@patch('ossai.slack_server.handler_sandbox_slash_command')
+async def test_handle_slash_command_sandbox(mock_handler_sandbox_slash_command, mock_client):
     # Setup
     mock_ack = AsyncMock()
+    mock_user_id = "U123ABC"
+    mock_payload = {"user_id": mock_user_id}
     mock_say = AsyncMock()
 
-    payload = {"user_id": "U123"}
-    mock_get_text_and_blocks_for_say.return_value = ("text", "blocks")
+    mock_handler_sandbox_slash_command.return_value = ("test_text", "test_blocks")
 
     # Execute
-    await handle_slash_command_sandbox(mock_ack, payload, mock_say)
+    await handle_slash_command_sandbox(mock_ack, mock_payload, mock_say)
 
-    # Verify
-    mock_ack.assert_awaited_once_with("...")
-    mock_get_text_and_blocks_for_say.assert_called_once_with(
-        title="This is a test of the /sandbox command.",
-        run_id=ANY,
-        messages=["-- Useful summary of content goes here --"],
+    # Assert
+    mock_handler_sandbox_slash_command.assert_called_once_with(
+        mock_client, mock_ack, mock_payload, mock_say, user_id=mock_user_id
     )
-    mock_say.assert_awaited_once_with("text", blocks="blocks")

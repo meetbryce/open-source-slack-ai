@@ -1,4 +1,5 @@
 import os
+import uuid
 
 from aiohttp import ClientSession
 from datetime import datetime
@@ -6,6 +7,7 @@ from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 from langsmith import Client
 
+from ossai.logging_config import logger
 from ossai.summarizer import summarize_slack_messages
 from ossai.topic_analysis import analyze_topics_of_history
 from ossai.utils import (
@@ -19,6 +21,32 @@ from ossai.utils import (
     get_since_timeframe_presets,
     handle_slack_api_error_with_say,
 )
+
+
+async def safe_slack_api_call(client: WebClient, user_id: str, func, *args, **kwargs):
+    """
+    Wraps a Slack API call in error handling that sends a message to the user about the error.
+    example usage:
+    await safe_slack_api_call(client, say, text=text, blocks=blocks)
+    """
+    assert hasattr(func, "channel"), "func must have a 'channel' attribute"
+
+    try:
+        return await func(*args, **kwargs)
+    except SlackApiError as e:
+        logger.error("[Slack API error] A SLACK ERROR OCCURRED...")
+
+        error_message = f"Sorry, an unexpected error occurred. `{e.response['error']}`\n\n```{str(e)}```"
+        try:
+            client.chat_postEphemeral(
+                channel=func.channel, user=user_id, text=error_message
+            )
+            logger.error(f"[Slack API error] Message sent to user. {error_message}")
+        except Exception as message_error:
+            logger.error(
+                f"[Slack API error] All hope is lost. Failed to send error message to user: `{message_error}`.",
+                exc_info=True,
+            )
 
 
 def handler_feedback(body):
@@ -244,8 +272,26 @@ async def handler_action_summarize_since_date(client: WebClient, body):
         )
         # todo: somehow add date/preset choice to langsmith metadata
         #   feature_name: str -> feature: str || Tuple[str, List(Tuple[str, str])]
-        return client.chat_postMessage(channel=dm_channel_id, text=text, blocks=blocks)
+        return client.chat_postMessage(
+            channel=dm_channel_id, text=text, blocks=blocks
+        )  # why is this not say()?
     except SlackApiError as e:
         return client.chat_postMessage(
             channel=dm_channel_id, text=f"Encountered an error: {e.response['error']}"
         )
+
+
+async def handler_sandbox_slash_command(
+    client: WebClient, ack, payload, say, user_id: str
+):
+    logger.debug(f"Handling /sandbox command")
+    await ack()
+    run_id = str(uuid.uuid4())
+    run_id = None
+    text = """-- Better error handling coming soon! Useful summary of content goes here -- (no run id)"""
+    lines = text.strip().split("\n")
+    title = "This is a test of the /sandbox command."
+    text, blocks = get_text_and_blocks_for_say(
+        title=title, run_id=run_id, messages=lines
+    )
+    return await safe_slack_api_call(client, user_id, say, text=text, blocks=blocks)
