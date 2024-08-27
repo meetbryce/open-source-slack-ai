@@ -3,7 +3,7 @@ import uuid
 import pytest
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 
 from ossai.handlers import (
     handler_shortcuts,

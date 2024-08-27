@@ -53,9 +53,11 @@ def test_main_loads_as_script(mock_app_advanced, mock_uvicorn, mock_os_environ, 
 
 
 @pytest.mark.asyncio
-@patch('ossai.slack_server.client')
-@patch('ossai.slack_server.handler_sandbox_slash_command')
-async def test_handle_slash_command_sandbox(mock_handler_sandbox_slash_command, mock_client):
+@patch("ossai.slack_server.client")
+@patch("ossai.slack_server.handler_sandbox_slash_command")
+async def test_handle_slash_command_sandbox(
+    mock_handler_sandbox_slash_command, mock_client
+):
     # Setup
     mock_ack = AsyncMock()
     mock_user_id = "U123ABC"
