@@ -12,9 +12,9 @@ from ossai.handlers import (
     handler_feedback,
     handler_action_summarize_since_date,
     handler_tldr_since_slash_command,
+    safe_slack_api_call,
 )
 
-# fixme: test safe_slack_api_call
 # fixme: assert each of the main handlers calls safe_slack_api_call with the right args
 
 
@@ -447,3 +447,55 @@ async def test_handler_tldr_since_slash_command_happy_path(
         channel="DM123",
         text="In #general, choose a date or timeframe to get your summary",
     )
+
+
+@pytest.mark.asyncio
+async def test_safe_slack_api_call_happy_path():
+    # Setup
+    client = MagicMock()
+    user_id = "U123"
+    mock_func = AsyncMock()
+    mock_func.channel = "C123"
+    expected_result = "Success"
+    mock_func.return_value = expected_result
+
+    # Execute
+    result = await safe_slack_api_call(
+        client, user_id, mock_func, arg1="test", arg2=123
+    )
+
+    # Verify
+    assert result == expected_result
+    mock_func.assert_called_once_with(arg1="test", arg2=123)
+    client.chat_postEphemeral.assert_not_called()
+
+
+@pytest.mark.asyncio
+@patch("ossai.handlers.logger")
+async def test_safe_slack_api_call_error_handling(mock_logger):
+    # Setup
+    client = MagicMock()
+    user_id = "U123"
+    mock_func = AsyncMock()
+    mock_func.channel = "C123"
+    mock_func.side_effect = SlackApiError(
+        message="Pineapple on pizza error", response={"error": "API error"}
+    )
+
+    # Execute
+    await safe_slack_api_call(client, user_id, mock_func)
+
+    # Verify
+    client.chat_postEphemeral.assert_called_once()
+    call_args = client.chat_postEphemeral.call_args
+    assert call_args.kwargs["channel"] == "C123"
+    assert call_args.kwargs["user"] == "U123"
+    assert (
+        "Sorry, an unexpected error occurred. `API error`" in call_args.kwargs["text"]
+    )
+    assert "Pineapple on pizza error" in call_args.kwargs["text"]
+
+    mock_logger.error.assert_called()
+    log_message = mock_logger.error.call_args.args[0]
+    assert "[Slack API error]" in log_message
+    assert "Pineapple on pizza error" in log_message
