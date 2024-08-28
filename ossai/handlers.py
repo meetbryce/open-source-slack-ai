@@ -174,7 +174,8 @@ async def handler_topics_slash_command(
     return await say(channel=dm_channel_id, text=text, blocks=blocks)
 
 
-async def handler_tldr_since_slash_command(client: WebClient, payload, say):
+async def handler_tldr_since_slash_command(client: WebClient, ack, payload, say):
+    await ack()
     title = "Choose your summary timeframe."
     dm_channel_id = await get_direct_message_channel_id(client, payload["user_id"])
 

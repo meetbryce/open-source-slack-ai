@@ -108,7 +108,7 @@ async def handle_slash_command_sandbox(ack, payload, say):
 
 @async_app.command("/tldr_since")
 async def handle_slash_command_tldr_since(ack, payload, say):
-    return await handler_tldr_since_slash_command(client, payload, say)
+    return await handler_tldr_since_slash_command(client, ack, payload, say)
 
 
 # MARK: - ACTIONS

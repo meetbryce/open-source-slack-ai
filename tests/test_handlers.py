@@ -416,11 +416,13 @@ async def test_handler_tldr_since_slash_command_happy_path(
     payload = {"user_id": "U123", "channel_id": "C123", "channel_name": "general"}
     get_since_timeframe_presets_mock.return_value = {"foo": "bar"}
     get_direct_message_channel_id_mock.return_value = "DM123"
+    ack = AsyncMock()
 
     # Execute
-    await handler_tldr_since_slash_command(client, payload, say)
+    await handler_tldr_since_slash_command(client, ack, payload, say)
 
     # Verify
+    ack.assert_called_once()
     client.chat_postEphemeral.assert_called_once_with(
         channel="C123",
         user="U123",
