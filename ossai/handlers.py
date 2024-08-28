@@ -7,6 +7,7 @@ from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 from langsmith import Client
 
+from ossai.decorators import safe_slack_api_call
 from ossai.logging_config import logger
 from ossai.summarizer import summarize_slack_messages
 from ossai.topic_analysis import analyze_topics_of_history
@@ -21,32 +22,6 @@ from ossai.utils import (
     get_since_timeframe_presets,
     handle_slack_api_error_with_say,
 )
-
-
-async def safe_slack_api_call(client: WebClient, user_id: str, func, *args, **kwargs):
-    """
-    Wraps a Slack API call in error handling that sends a message to the user about the error.
-    example usage:
-    await safe_slack_api_call(client, say, text=text, blocks=blocks)
-    """
-    assert hasattr(func, "channel"), "func must have a 'channel' attribute"
-
-    try:
-        return await func(*args, **kwargs)
-    except SlackApiError as e:
-        logger.error("[Slack API error] A SLACK ERROR OCCURRED...")
-
-        error_message = f"Sorry, an unexpected error occurred. `{e.response['error']}`\n\n```{str(e)}```"
-        try:
-            client.chat_postEphemeral(
-                channel=func.channel, user=user_id, text=error_message
-            )
-            logger.error(f"[Slack API error] Message sent to user. {error_message}")
-        except Exception as message_error:
-            logger.error(
-                f"[Slack API error] All hope is lost. Failed to send error message to user: `{message_error}`.",
-                exc_info=True,
-            )
 
 
 def handler_feedback(body):
@@ -281,6 +256,7 @@ async def handler_action_summarize_since_date(client: WebClient, body):
         )
 
 
+@safe_slack_api_call
 async def handler_sandbox_slash_command(
     client: WebClient, ack, payload, say, user_id: str
 ):
@@ -294,4 +270,4 @@ async def handler_sandbox_slash_command(
     text, blocks = get_text_and_blocks_for_say(
         title=title, run_id=run_id, messages=lines
     )
-    return await safe_slack_api_call(client, user_id, say, text=text, blocks=blocks)
+    return await say(text=text, blocks=blocks)
