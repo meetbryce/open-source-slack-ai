@@ -104,7 +104,7 @@ async def handler_tldr_slash_command(
     client: WebClient, ack, payload, say, user_id: str
 ):
     # todo: rename this to reflect it being for /tldr_extended now
-    await ack()  # fixme: this seemingly does nothing
+    await ack()
     text = payload.get("text", None)
     channel_name = payload["channel_name"]
     channel_id = payload["channel_id"]
@@ -163,7 +163,6 @@ async def handler_topics_slash_command(
     messages = get_parsed_messages(client, history, with_names=False)
     user = await get_user_context(client, user_id)
     is_private, channel_name = get_is_private_and_channel_name(client, channel_id)
-    # fixme: give the user an error if not enough messages (>=6)
     topic_overview, run_id = await analyze_topics_of_history(
         channel_name, messages, user=user, is_private=is_private
     )
@@ -174,6 +173,7 @@ async def handler_topics_slash_command(
     return await say(channel=dm_channel_id, text=text, blocks=blocks)
 
 
+@safe_slack_api_call
 async def handler_tldr_since_slash_command(client: WebClient, ack, payload, say):
     await ack()
     title = "Choose your summary timeframe."
@@ -215,6 +215,7 @@ async def handler_action_summarize_since_date(client: WebClient, body):
     """
     Provide a message summary of the channel since a given date.
     """
+    # !! important that this gets the decorator too !!
     channel_name = body["channel"]["name"]
     channel_id = body["channel"]["id"]
     user_id = body["user"]["id"]
