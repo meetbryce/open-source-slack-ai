@@ -410,7 +410,7 @@ async def test_handler_tldr_since_slash_command_happy_path(
     get_since_timeframe_presets_mock, get_direct_message_channel_id_mock
 ):
     # Setup
-    client = AsyncMock()
+    client = AsyncMock(spec=WebClient)
     client.chat_postEphemeral = AsyncMock()
     say = AsyncMock()
     payload = {"user_id": "U123", "channel_id": "C123", "channel_name": "general"}
