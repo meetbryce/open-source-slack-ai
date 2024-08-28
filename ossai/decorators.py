@@ -6,13 +6,20 @@ from ossai.logging_config import logger
 
 def safe_slack_api_call(func):
     @wraps(func)
-    async def wrapper(client: WebClient, *args, **kwargs):
-        user_id = kwargs.get("user_id")
-        channel_id = args[1].get("channel_id")
+    async def wrapper(*args, **kwargs):
+        client = args[0]
+        assert isinstance(client, WebClient), "client must be a Slack WebClient"
+
+        payload = args[2]
+
+        user_id = payload.get("user_id")
+        assert user_id, "payload must contain 'user_id'"
+
+        channel_id = payload.get("channel_id")
         assert channel_id, "payload must contain 'channel_id'"
 
         try:
-            return await func(client, *args, **kwargs)
+            return await func(*args, **kwargs)
         except SlackApiError as e:
             logger.error("[Slack API error] A SLACK ERROR OCCURRED...")
 
