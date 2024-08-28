@@ -26,6 +26,7 @@ def client():
 def payload():
     return {
         "channel": {"id": "channel_id"},
+        "user_id": "user_id",
         "message_ts": "message_ts",
         "channel_name": "channel_name",
         "channel_id": "channel_id",
