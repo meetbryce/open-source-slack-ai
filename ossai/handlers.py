@@ -143,6 +143,7 @@ async def handler_tldr_slash_command(
         return await handle_slack_api_error_with_say(client, e, dm_channel_id, say)
 
 
+@safe_slack_api_call
 async def handler_topics_slash_command(
     client: WebClient, ack, payload, say, user_id: str
 ):
