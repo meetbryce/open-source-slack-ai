@@ -354,7 +354,7 @@ async def test_handler_action_summarize_since_date(
 ):
     # Setup
     client = AsyncMock()
-    body = {
+    payload = {
         "channel": {"name": "general", "id": "C123"},
         "user": {"id": "U123"},
         "actions": [
@@ -376,7 +376,7 @@ async def test_handler_action_summarize_since_date(
     datetime_mock.fromtimestamp.return_value = mocked_date
 
     # Execute
-    await handler_action_summarize_since_date(client, body)
+    await handler_action_summarize_since_date(client, payload)
 
     # Verify
     get_direct_message_channel_id_mock.assert_called_once_with(client, "U123")
