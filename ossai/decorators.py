@@ -5,6 +5,7 @@ from ossai.logging_config import logger
 
 
 def safe_slack_api_call(func):
+    # todo: rename to samething like @catch_execution_errors_and_send_to_user
     @wraps(func)
     async def wrapper(*args, **kwargs):
         client = args[0]

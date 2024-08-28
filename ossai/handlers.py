@@ -103,6 +103,7 @@ async def handler_shortcuts(
 async def handler_tldr_slash_command(
     client: WebClient, ack, payload, say, user_id: str
 ):
+    # todo: rename this to reflect it being for /tldr_extended now
     await ack()  # fixme: this seemingly does nothing
     text = payload.get("text", None)
     channel_name = payload["channel_name"]
