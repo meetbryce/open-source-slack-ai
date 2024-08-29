@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 import uuid
 import pytest
 from slack_sdk import WebClient
@@ -46,8 +46,9 @@ def shortcuts_payload():
             "team_id": "T077UE5VA3B",
             "name": "bryce",
         },
-        "channel": {"id": "C077FQ2BF3L", "name": "open-source-slack-ai"},
+        "channel": {"id": "channel_id", "name": "channel_name"},
         "callback_id": "thread_private",
+        "message_ts": "message_ts",
     }
 
 
@@ -248,13 +249,13 @@ def test_handler_feedback_very_helpful_button(env_get_mock, client_mock):
 
 
 @pytest.mark.asyncio
-@patch("ossai.handlers.get_direct_message_channel_id")
+@patch("ossai.decorators.get_direct_message_channel_id")
 @patch("ossai.utils.get_bot_id")
 async def test_handler_shortcuts_channel_not_found_error(
     get_bot_id_mock, get_direct_message_channel_id_mock
 ):
     # Setup
-    client = MagicMock(spec=WebClient)
+    client = AsyncMock(spec=WebClient)
     client.bots_info.return_value = {"bot": {"name": "TestBot"}}
     say = AsyncMock()
     get_direct_message_channel_id_mock.return_value = "DM123"
@@ -277,8 +278,10 @@ async def test_handler_shortcuts_channel_not_found_error(
     )
 
     # Verify
-    say.assert_called_with(
+    get_direct_message_channel_id_mock.assert_called_once_with(client, "U123")
+    client.chat_postEphemeral.assert_called_once_with(
         channel="DM123",
+        user="U123",
         text="Sorry, couldn't find the channel. Have you added `@TestBot` to the channel?",
     )
 
@@ -355,6 +358,7 @@ async def test_handler_tldr_extended_slash_command_public_extended(
             "channel_name": "general",
             "channel_id": "C123",
             "user_id": "U123",
+            "message_ts": "1234567890.123456",
         },
         say,
         "U123",

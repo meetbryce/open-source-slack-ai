@@ -55,6 +55,7 @@ def handler_feedback(body):
 async def handler_shortcuts(
     client: WebClient, is_private: bool, payload, say, user_id: str
 ):
+    # fixme: there's a regression here that lost the message to the user when bot is not in channel
     channel_id = (
         payload["channel"]["id"] if payload["channel"]["id"] else payload["channel_id"]
     )

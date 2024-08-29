@@ -2,6 +2,7 @@ from functools import wraps
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 from ossai.logging_config import logger
+from ossai.utils import get_bot_id, get_direct_message_channel_id
 
 
 def safe_slack_api_call(func):
@@ -23,14 +24,25 @@ def safe_slack_api_call(func):
         channel_id = payload.get("channel_id") or payload.get("channel").get("id")
         assert channel_id, f"payload must contain 'channel_id'. Payload: {payload}"
 
-        logger.debug(f'{user_id=} {channel_id=}')
-
         try:
             return await func(*args, **kwargs)
         except SlackApiError as e:
             logger.error("[Slack API error] A SLACK ERROR OCCURRED...")
-            error_type = "Slack API"
-            error_message = f"Sorry, an unexpected error occurred. `{e.response['error']}`\n\n```{str(e)}```"
+            if (
+                e.response["error"] == "not_in_channel"
+                or e.response["error"] == "channel_not_found"
+            ):
+                # todo: use this in all handlers (and remove the util function)
+                channel_id = await get_direct_message_channel_id(client, user_id)
+                error_type = "Not in channel"
+                bot_id = await get_bot_id(client)
+                bot_info = client.bots_info(bot=bot_id)
+                bot_name = bot_info["bot"]["name"]
+                error_message = f"Sorry, couldn't find the channel. Have you added `@{bot_name}` to the channel?"
+            else:
+                error_type = "Slack API"
+                error_message = f"Sorry, an unexpected error occurred. `{e.response['error']}`\n\n```{str(e)}```"
+
             await _send_error_message(
                 client, channel_id, user_id, error_type, error_message
             )
@@ -46,7 +58,11 @@ def safe_slack_api_call(func):
 
 
 async def _send_error_message(client, channel_id, user_id, error_type, error_message):
+    logger.debug(
+        f"running _send_error_message() with {channel_id=} {user_id=} {error_type=} {error_message=}"
+    )
     try:
+        # ? is this sometime async other times not?
         await client.chat_postEphemeral(
             channel=channel_id, user=user_id, text=error_message
         )
