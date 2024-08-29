@@ -20,7 +20,6 @@ from ossai.utils import (
     get_is_private_and_channel_name,
     get_text_and_blocks_for_say,
     get_since_timeframe_presets,
-    handle_slack_api_error_with_say,
 )
 
 
@@ -55,7 +54,6 @@ def handler_feedback(body):
 async def handler_shortcuts(
     client: WebClient, is_private: bool, payload, say, user_id: str
 ):
-    # fixme: there's a regression here that lost the message to the user when bot is not in channel
     channel_id = (
         payload["channel"]["id"] if payload["channel"]["id"] else payload["channel_id"]
     )
@@ -72,7 +70,6 @@ async def handler_shortcuts(
         workspace_name = get_workspace_name(client)
         link = f"https://{workspace_name}.slack.com/archives/{channel_id}/p{payload['message_ts'].replace('.', '')}"
 
-        # truncate the message if it's longer than 120 characters &/or it contains \n and append the link
         original_message = original_message.split("\n")
         thread_hint = (
             original_message[0]
@@ -103,7 +100,6 @@ async def handler_shortcuts(
 async def handler_tldr_extended_slash_command(
     client: WebClient, ack, payload, say, user_id: str
 ):
-    # todo: rename this to reflect it being for /tldr_extended now
     await ack()
     text = payload.get("text", None)
     channel_name = payload["channel_name"]
@@ -111,54 +107,44 @@ async def handler_tldr_extended_slash_command(
     dm_channel_id = None
 
     if text == "public":
-        await say(
-            "..."
-        )  # hack to get the bot to not show an error message but works fine
+        await say("...")
     else:
         dm_channel_id = await get_direct_message_channel_id(client, user_id)
-        await say(
-            channel=dm_channel_id, text="..."
-        )  # hack to get the bot to not show an error message but works fine
+        await say(channel=dm_channel_id, text="...")
 
     if text and text != "public":
         return await say("ERROR: Invalid command. Try /tldr or /tldr public.")
-    try:
-        history = await get_channel_history(client, channel_id)
-        history.reverse()
-        user = await get_user_context(client, user_id)
-        title = f"*Summary of #{channel_name}* (last {len(history)} messages)\n"
-        summary, run_id = summarize_slack_messages(
-            client,
-            history,
-            channel_id,
-            feature_name="summarize_channel_messages",
-            user=user,
-        )
-        text, blocks = get_text_and_blocks_for_say(
-            title=title, run_id=run_id, messages=summary
-        )
-        if text == "public":
-            return await say(text=text, blocks=blocks)
-        return await say(channel=dm_channel_id, text=text, blocks=blocks)
-    except SlackApiError as e:
-        return await handle_slack_api_error_with_say(client, e, dm_channel_id, say)
+
+    history = await get_channel_history(client, channel_id)
+    history.reverse()
+    user = await get_user_context(client, user_id)
+    title = f"*Summary of #{channel_name}* (last {len(history)} messages)\n"
+    summary, run_id = summarize_slack_messages(
+        client,
+        history,
+        channel_id,
+        feature_name="summarize_channel_messages",
+        user=user,
+    )
+    text, blocks = get_text_and_blocks_for_say(
+        title=title, run_id=run_id, messages=summary
+    )
+    if text == "public":
+        return await say(text=text, blocks=blocks)
+    return await say(channel=dm_channel_id, text=text, blocks=blocks)
 
 
 @safe_slack_api_call
 async def handler_topics_slash_command(
     client: WebClient, ack, payload, say, user_id: str
 ):
-    # START boilerplate
     await ack()
     channel_id = payload["channel_id"]
     dm_channel_id = await get_direct_message_channel_id(client, user_id)
     await say(channel=dm_channel_id, text="...")
 
-    try:
-        history = await get_channel_history(client, channel_id)
-        history.reverse()
-    except SlackApiError as e:
-        return await handle_slack_api_error_with_say(client, e, dm_channel_id, say)
+    history = await get_channel_history(client, channel_id)
+    history.reverse()
 
     messages = get_parsed_messages(client, history, with_names=False)
     user = await get_user_context(client, user_id)
@@ -179,31 +165,28 @@ async def handler_tldr_since_slash_command(client: WebClient, ack, payload, say)
     title = "Choose your summary timeframe."
     dm_channel_id = await get_direct_message_channel_id(client, payload["user_id"])
 
-    try:
-        client.chat_postEphemeral(
-            channel=payload["channel_id"],
-            user=payload["user_id"],
-            text=title,
-            blocks=[
-                {
-                    "type": "actions",
-                    "elements": [
-                        get_since_timeframe_presets(),
-                        {
-                            "type": "datepicker",
-                            "placeholder": {
-                                "type": "plain_text",
-                                "text": "Select a date",
-                                "emoji": True,
-                            },
-                            "action_id": "summarize_since",
+    client.chat_postEphemeral(
+        channel=payload["channel_id"],
+        user=payload["user_id"],
+        text=title,
+        blocks=[
+            {
+                "type": "actions",
+                "elements": [
+                    get_since_timeframe_presets(),
+                    {
+                        "type": "datepicker",
+                        "placeholder": {
+                            "type": "plain_text",
+                            "text": "Select a date",
+                            "emoji": True,
                         },
-                    ],
-                }
-            ],
-        )
-    except SlackApiError as e:
-        return await handle_slack_api_error_with_say(client, e, dm_channel_id, say)
+                        "action_id": "summarize_since",
+                    },
+                ],
+            }
+        ],
+    )
 
     await say(
         channel=dm_channel_id,
@@ -217,7 +200,6 @@ async def handler_action_summarize_since_date(client: WebClient, ack, body):
     Provide a message summary of the channel since a given date.
     """
     await ack()
-    # !! important that this gets the decorator too !!
     channel_name = body["channel"]["name"]
     channel_id = body["channel"]["id"]
     user_id = body["user"]["id"]
@@ -239,27 +221,20 @@ async def handler_action_summarize_since_date(client: WebClient, ack, body):
     async with ClientSession() as session:
         await session.post(body["response_url"], json={"delete_original": "true"})
 
-    try:
-        history = await get_channel_history(client, channel_id, since=since_datetime)
-        history.reverse()
-        user = await get_user_context(client, user_id)
-        summary, run_id = summarize_slack_messages(
-            client, history, channel_id, feature_name=feature_name, user=user
-        )
-        text, blocks = get_text_and_blocks_for_say(
-            title=f'*Summary of #{channel_name}* since {since_datetime.strftime("%A %b %-d, %Y")} ({len(history)} messages)\n',
-            run_id=run_id,
-            messages=summary,
-        )
-        # todo: somehow add date/preset choice to langsmith metadata
-        #   feature_name: str -> feature: str || Tuple[str, List(Tuple[str, str])]
-        return client.chat_postMessage(
-            channel=dm_channel_id, text=text, blocks=blocks
-        )  # why is this not say()?
-    except SlackApiError as e:
-        return client.chat_postMessage(
-            channel=dm_channel_id, text=f"Encountered an error: {e.response['error']}"
-        )
+    history = await get_channel_history(client, channel_id, since=since_datetime)
+    history.reverse()
+    user = await get_user_context(client, user_id)
+    summary, run_id = summarize_slack_messages(
+        client, history, channel_id, feature_name=feature_name, user=user
+    )
+    text, blocks = get_text_and_blocks_for_say(
+        title=f'*Summary of #{channel_name}* since {since_datetime.strftime("%A %b %-d, %Y")} ({len(history)} messages)\n',
+        run_id=run_id,
+        messages=summary,
+    )
+    # todo: somehow add date/preset choice to langsmith metadata
+    #   feature_name: str -> feature: str || Tuple[str, List(Tuple[str, str])]
+    return client.chat_postMessage(channel=dm_channel_id, text=text, blocks=blocks)
 
 
 @safe_slack_api_call
