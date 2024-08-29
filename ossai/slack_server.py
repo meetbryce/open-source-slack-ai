@@ -13,7 +13,7 @@ load_dotenv(override=True)
 
 from ossai.handlers import (
     handler_shortcuts,
-    handler_tldr_slash_command,
+    handler_tldr_extended_slash_command,
     handler_topics_slash_command,
     handler_feedback,
     handler_tldr_since_slash_command,
@@ -86,8 +86,8 @@ app.add_middleware(
 
 
 @async_app.command("/tldr_extended")
-async def handle_tldr_slash_command(ack, payload, say):
-    return await handler_tldr_slash_command(
+async def handle_tldr_extended_slash_command(ack, payload, say):
+    return await handler_tldr_extended_slash_command(
         client, ack, payload, say, user_id=payload["user_id"]
     )
 
@@ -118,7 +118,7 @@ async def handle_slash_command_tldr_since(ack, payload, say):
 @async_app.action("summarize_since_preset")
 async def handle_action_summarize_since_date(ack, body, logger):
     await ack()
-    await handler_action_summarize_since_date(client, body)
+    await handler_action_summarize_since_date(client, ack, body)
     return logger.info(body)
 
 

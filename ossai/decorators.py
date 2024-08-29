@@ -11,13 +11,17 @@ def safe_slack_api_call(func):
         client = args[0]
         assert isinstance(client, WebClient), "client must be a Slack WebClient"
 
-        payload = args[2]
+        try:
+            payload = args[2]
+        except IndexError:
+            print("PAYLOAD ERROR! args:", args)
+            raise
 
-        user_id = payload.get("user_id")
-        assert user_id, "payload must contain 'user_id'"
+        user_id = payload.get("user_id") or payload.get("user").get("id")
+        assert user_id, f"payload must contain 'user_id'. Payload: {payload}"
 
-        channel_id = payload.get("channel_id")
-        assert channel_id, "payload must contain 'channel_id'"
+        channel_id = payload.get("channel_id") or payload.get("channel").get("id")
+        assert channel_id, f"payload must contain 'channel_id'. Payload: {payload}"
 
         logger.debug(f'{user_id=} {channel_id=}')
 
