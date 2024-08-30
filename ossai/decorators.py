@@ -5,8 +5,7 @@ from ossai.logging_config import logger
 from ossai.utils import get_bot_id, get_direct_message_channel_id
 
 
-def safe_slack_api_call(func):
-    # todo: rename to samething like @catch_execution_errors_and_send_to_user
+def catch_errors_dm_user(func):
     @wraps(func)
     async def wrapper(*args, **kwargs):
         client = args[0]

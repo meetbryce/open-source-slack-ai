@@ -2,16 +2,16 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
-from ossai.decorators import safe_slack_api_call
+from ossai.decorators import catch_errors_dm_user
 
 
 @pytest.mark.asyncio
-async def test_safe_slack_api_call_happy_path():
+async def test_catch_errors_dm_user_happy_path():
     # Setup
     client = AsyncMock(spec=WebClient)
     mock_func = AsyncMock()
     mock_func.return_value = "Success"
-    decorated_func = safe_slack_api_call(mock_func)
+    decorated_func = catch_errors_dm_user(mock_func)
 
     # Create a mock payload with channel_id and a mock ack function
     mock_payload = {"channel_id": "C123", "user_id": "U123"}
@@ -33,14 +33,14 @@ async def test_safe_slack_api_call_happy_path():
 
 @pytest.mark.asyncio
 @patch("ossai.decorators.logger")
-async def test_safe_slack_api_call_error_handling(mock_logger):
+async def test_catch_errors_dm_user_error_handling(mock_logger):
     # Setup
     client = AsyncMock(spec=WebClient)
     mock_func = AsyncMock()
     mock_func.side_effect = SlackApiError(
         message="Pineapple on pizza error", response={"error": "API error"}
     )
-    decorated_func = safe_slack_api_call(mock_func)
+    decorated_func = catch_errors_dm_user(mock_func)
 
     client.chat_postEphemeral = AsyncMock()
 

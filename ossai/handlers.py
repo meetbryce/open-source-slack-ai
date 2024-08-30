@@ -7,7 +7,7 @@ from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 from langsmith import Client
 
-from ossai.decorators import safe_slack_api_call
+from ossai.decorators import catch_errors_dm_user
 from ossai.logging_config import logger
 from ossai.summarizer import summarize_slack_messages
 from ossai.topic_analysis import analyze_topics_of_history
@@ -50,7 +50,7 @@ def handler_feedback(body):
     )
 
 
-@safe_slack_api_call
+@catch_errors_dm_user
 async def handler_shortcuts(
     client: WebClient, is_private: bool, payload, say, user_id: str
 ):
@@ -96,7 +96,7 @@ async def handler_shortcuts(
         )
 
 
-@safe_slack_api_call
+@catch_errors_dm_user
 async def handler_tldr_extended_slash_command(
     client: WebClient, ack, payload, say, user_id: str
 ):
@@ -134,7 +134,7 @@ async def handler_tldr_extended_slash_command(
     return await say(channel=dm_channel_id, text=text, blocks=blocks)
 
 
-@safe_slack_api_call
+@catch_errors_dm_user
 async def handler_topics_slash_command(
     client: WebClient, ack, payload, say, user_id: str
 ):
@@ -159,7 +159,7 @@ async def handler_topics_slash_command(
     return await say(channel=dm_channel_id, text=text, blocks=blocks)
 
 
-@safe_slack_api_call
+@catch_errors_dm_user
 async def handler_tldr_since_slash_command(client: WebClient, ack, payload, say):
     await ack()
     title = "Choose your summary timeframe."
@@ -194,7 +194,7 @@ async def handler_tldr_since_slash_command(client: WebClient, ack, payload, say)
     )
 
 
-@safe_slack_api_call
+@catch_errors_dm_user
 async def handler_action_summarize_since_date(client: WebClient, ack, body):
     """
     Provide a message summary of the channel since a given date.
@@ -237,7 +237,7 @@ async def handler_action_summarize_since_date(client: WebClient, ack, body):
     return client.chat_postMessage(channel=dm_channel_id, text=text, blocks=blocks)
 
 
-@safe_slack_api_call
+@catch_errors_dm_user
 async def handler_sandbox_slash_command(
     client: WebClient, ack, payload, say, user_id: str
 ):
