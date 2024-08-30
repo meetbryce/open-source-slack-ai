@@ -6,6 +6,7 @@ from slack_sdk.errors import SlackApiError
 from datetime import datetime, timezone
 
 from ossai.handlers import (
+    handler_sandbox_slash_command,
     handler_shortcuts,
     handler_tldr_extended_slash_command,
     handler_topics_slash_command,
@@ -13,8 +14,6 @@ from ossai.handlers import (
     handler_action_summarize_since_date,
     handler_tldr_since_slash_command,
 )
-
-# fixme: assert each of the main handlers calls safe_slack_api_call with the right args
 
 
 @pytest.fixture
@@ -481,3 +480,144 @@ async def test_handler_tldr_since_slash_command_happy_path(
         channel="DM123",
         text="In #general, choose a date or timeframe to get your summary",
     )
+
+
+@pytest.mark.asyncio
+@patch("ossai.decorators.get_direct_message_channel_id")
+@patch("ossai.utils.get_bot_id")
+async def test_handlers_bot_not_in_channel(
+    get_bot_id_mock: AsyncMock,
+    get_direct_message_channel_id_mock: AsyncMock,
+) -> None:
+    USER_ID = "U123"
+    CHANNEL_ID = "C123"
+    DM_CHANNEL_ID = "DM123"
+
+    client = AsyncMock(spec=WebClient)
+    client.bots_info.return_value = {"bot": {"name": "TestBot"}}
+    say = AsyncMock()
+    ack = AsyncMock()
+    get_direct_message_channel_id_mock.return_value = DM_CHANNEL_ID
+    get_bot_id_mock.return_value = "B123"
+
+    handlers_to_test = [
+        (
+            handler_shortcuts,
+            (
+                client,
+                False,
+                {
+                    "channel": {"id": CHANNEL_ID},
+                    "user": {"id": USER_ID},
+                    "message_ts": "1234567890.123456",
+                },
+                say,
+                USER_ID,
+            ),
+        ),
+        (
+            handler_tldr_since_slash_command,
+            (
+                client,
+                ack,
+                {
+                    "user_id": USER_ID,
+                    "channel_id": CHANNEL_ID,
+                    "channel_name": "general",
+                },
+                say,
+            ),
+        ),
+        (
+            handler_sandbox_slash_command,
+            (
+                client,
+                ack,
+                {
+                    "user_id": USER_ID,
+                    "channel_id": CHANNEL_ID,
+                    "channel_name": "general",
+                },
+                say,
+                USER_ID,
+            ),
+        ),
+        (
+            handler_action_summarize_since_date,
+            (
+                client,
+                ack,
+                {
+                    "channel": {"name": "general", "id": CHANNEL_ID},
+                    "user": {"id": USER_ID},
+                    "actions": [
+                        {
+                            "action_id": "summarize_since_preset",
+                            "selected_option": {"value": "1676955600"},
+                        }
+                    ],
+                    "response_url": "http://example.com/response",
+                },
+            ),
+        ),
+        (
+            handler_topics_slash_command,
+            (
+                client,
+                ack,
+                {
+                    "user_id": USER_ID,
+                    "channel_id": CHANNEL_ID,
+                    "channel_name": "general",
+                },
+                say,
+                USER_ID,
+            ),
+        ),
+        (
+            handler_tldr_extended_slash_command,
+            (
+                client,
+                ack,
+                {
+                    "user_id": USER_ID,
+                    "channel_id": CHANNEL_ID,
+                    "channel_name": "general",
+                    "text": "",
+                },
+                say,
+                USER_ID,
+            ),
+        ),
+    ]
+
+    for handler, args in handlers_to_test:
+        client.reset_mock()
+        say.reset_mock()
+        ack.reset_mock()
+
+        client.conversations_replies.side_effect = SlackApiError(
+            message="channel_not_found", response={"error": "channel_not_found"}
+        )
+        client.chat_postEphemeral.side_effect = SlackApiError(
+            message="channel_not_found", response={"error": "channel_not_found"}
+        )
+        client.conversations_history.side_effect = SlackApiError(
+            message="channel_not_found", response={"error": "channel_not_found"}
+        )
+        say.side_effect = SlackApiError(
+            message="channel_not_found", response={"error": "channel_not_found"}
+        )
+
+        await handler(*args)
+
+        error_message = "Sorry, couldn't find the channel. Have you added `@TestBot` to the channel?"
+
+        client.chat_postEphemeral.assert_called_with(
+            channel=DM_CHANNEL_ID, user=USER_ID, text=error_message
+        )
+
+        client.conversations_replies.side_effect = None
+        client.chat_postEphemeral.side_effect = None
+        client.conversations_history.side_effect = None
+        say.side_effect = None
