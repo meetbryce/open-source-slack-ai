@@ -3,23 +3,23 @@ import asyncio
 from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
-
-load_dotenv(override=True)
-
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from slack_bolt.adapter.socket_mode.aiohttp import AsyncSocketModeHandler
 from slack_bolt.async_app import AsyncApp
 from slack_sdk import WebClient
 
+load_dotenv(override=True)
+
 from ossai.handlers import (
     handler_shortcuts,
-    handler_tldr_slash_command,
+    handler_tldr_extended_slash_command,
     handler_topics_slash_command,
     handler_feedback,
     handler_tldr_since_slash_command,
     handler_action_summarize_since_date,
+    handler_sandbox_slash_command,
 )
-from ossai.utils import get_text_and_blocks_for_say
 
 app = FastAPI()
 async_app = AsyncApp(token=os.environ["SLACK_BOT_TOKEN"])
@@ -72,9 +72,22 @@ async def slack_events(request: Request):
     return {"status": 401, "message": "Unauthorized"}
 
 
+# MARK: - MIDDLEWARE
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # todo: tighten this up in production
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# MARK: - SLASH COMMANDS
+
+
 @async_app.command("/tldr_extended")
-async def handle_tldr_slash_command(ack, payload, say):
-    return await handler_tldr_slash_command(
+async def handle_tldr_extended_slash_command(ack, payload, say):
+    return await handler_tldr_extended_slash_command(
         client, ack, payload, say, user_id=payload["user_id"]
     )
 
@@ -88,31 +101,24 @@ async def handle_slash_command_topics(ack, payload, say):
 
 @async_app.command("/sandbox")
 async def handle_slash_command_sandbox(ack, payload, say):
-    await ack("...")
-    import uuid
-
-    run_id = str(uuid.uuid4())
-
-    text = """-- Useful summary of content goes here --"""
-    lines = text.strip().split("\n")
-    title = "This is a test of the /sandbox command."
-    text, blocks = get_text_and_blocks_for_say(
-        title=title, run_id=run_id, messages=lines
+    return await handler_sandbox_slash_command(
+        client, ack, payload, say, user_id=payload["user_id"]
     )
-    return await say(text, blocks=blocks)
 
 
 @async_app.command("/tldr_since")
 async def handle_slash_command_tldr_since(ack, payload, say):
-    await ack()
-    return await handler_tldr_since_slash_command(client, payload, say)
+    return await handler_tldr_since_slash_command(client, ack, payload, say)
+
+
+# MARK: - ACTIONS
 
 
 @async_app.action("summarize_since")
 @async_app.action("summarize_since_preset")
 async def handle_action_summarize_since_date(ack, body, logger):
     await ack()
-    await handler_action_summarize_since_date(client, body)
+    await handler_action_summarize_since_date(client, ack, body)
     return logger.info(body)
 
 
@@ -123,6 +129,9 @@ async def handle_feedback(ack, body, logger):
     await ack("...")
     handler_feedback(body)
     return logger.info(body)
+
+
+# MARK: - SHORTCUTS
 
 
 @async_app.shortcut("thread")

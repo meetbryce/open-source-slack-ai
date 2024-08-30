@@ -1,13 +1,14 @@
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 import uuid
 import pytest
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 
 from ossai.handlers import (
+    handler_sandbox_slash_command,
     handler_shortcuts,
-    handler_tldr_slash_command,
+    handler_tldr_extended_slash_command,
     handler_topics_slash_command,
     handler_feedback,
     handler_action_summarize_since_date,
@@ -24,10 +25,29 @@ def client():
 def payload():
     return {
         "channel": {"id": "channel_id"},
+        "user_id": "user_id",
         "message_ts": "message_ts",
         "channel_name": "channel_name",
         "channel_id": "channel_id",
         "text": "text",
+    }
+
+
+@pytest.fixture
+def shortcuts_payload():
+    return {
+        "type": "message_action",
+        "token": "tokentokentoken",
+        "action_ts": "1724891107.611566",
+        "user": {
+            "id": "U077J8M90AG",
+            "username": "bryce",
+            "team_id": "T077UE5VA3B",
+            "name": "bryce",
+        },
+        "channel": {"id": "channel_id", "name": "channel_name"},
+        "callback_id": "thread_private",
+        "message_ts": "message_ts",
     }
 
 
@@ -48,11 +68,11 @@ async def test_handler_shortcuts(
 
 @pytest.mark.asyncio
 @patch("ossai.handlers.get_direct_message_channel_id")
-async def test_handler_tldr_slash_command_channel_history_error(
+async def test_handler_tldr_extended_slash_command_channel_history_error(
     get_direct_message_channel_id_mock, client, payload, say
 ):
     get_direct_message_channel_id_mock.return_value = "dm_channel_id"
-    await handler_tldr_slash_command(
+    await handler_tldr_extended_slash_command(
         client, AsyncMock(), payload, say, user_id="foo123"
     )
     say.assert_called()
@@ -93,7 +113,7 @@ async def test_handler_shortcuts(
     summarize_slack_messages_mock,
     get_workspace_name_mock,
     client,
-    payload,
+    shortcuts_payload,
     say,
 ):
     # Arrange
@@ -140,7 +160,7 @@ async def test_handler_shortcuts(
         },
     ]
 
-    await handler_shortcuts(client, True, payload, say, user_id="foo123")
+    await handler_shortcuts(client, True, shortcuts_payload, say, user_id="foo123")
     say.assert_called_with(
         channel="dm_channel_id", text="summary", blocks=expected_blocks
     )
@@ -148,7 +168,7 @@ async def test_handler_shortcuts(
 
 @pytest.mark.asyncio
 @patch("ossai.handlers.get_direct_message_channel_id")
-async def test_handler_tldr_slash_command_public(
+async def test_handler_tldr_extended_slash_command_public(
     get_direct_message_channel_id_mock, client, say
 ):
     get_direct_message_channel_id_mock.return_value = "dm_channel_id"
@@ -156,8 +176,9 @@ async def test_handler_tldr_slash_command_public(
         "text": "public",
         "channel_name": "channel_name",
         "channel_id": "channel_id",
+        "user_id": "user_id",
     }
-    await handler_tldr_slash_command(
+    await handler_tldr_extended_slash_command(
         client, AsyncMock(), payload, say, user_id="foo123"
     )
     say.assert_called()
@@ -227,13 +248,13 @@ def test_handler_feedback_very_helpful_button(env_get_mock, client_mock):
 
 
 @pytest.mark.asyncio
-@patch("ossai.handlers.get_direct_message_channel_id")
+@patch("ossai.decorators.get_direct_message_channel_id")
 @patch("ossai.utils.get_bot_id")
 async def test_handler_shortcuts_channel_not_found_error(
     get_bot_id_mock, get_direct_message_channel_id_mock
 ):
     # Setup
-    client = MagicMock()
+    client = AsyncMock(spec=WebClient)
     client.bots_info.return_value = {"bot": {"name": "TestBot"}}
     say = AsyncMock()
     get_direct_message_channel_id_mock.return_value = "DM123"
@@ -245,15 +266,21 @@ async def test_handler_shortcuts_channel_not_found_error(
     # Execute
     await handler_shortcuts(
         client,
-        is_private=False,
-        payload={"channel": {"id": "C123"}, "message_ts": "1234567890.123456"},
+        False,
+        {
+            "channel": {"id": "C123"},
+            "user": {"id": "U123"},
+            "message_ts": "1234567890.123456",
+        },
         say=say,
         user_id="U123",
     )
 
     # Verify
-    say.assert_called_with(
+    get_direct_message_channel_id_mock.assert_called_once_with(client, "U123")
+    client.chat_postEphemeral.assert_called_once_with(
         channel="DM123",
+        user="U123",
         text="Sorry, couldn't find the channel. Have you added `@TestBot` to the channel?",
     )
 
@@ -264,7 +291,7 @@ async def test_handler_shortcuts_channel_not_found_error(
 @patch("ossai.handlers.summarize_slack_messages")
 @patch("ossai.handlers.get_text_and_blocks_for_say")
 @patch("ossai.handlers.get_direct_message_channel_id")
-async def test_handler_tldr_slash_command_non_public(
+async def test_handler_tldr_extended_slash_command_non_public(
     get_direct_message_channel_id_mock,
     get_text_and_blocks_for_say_mock,
     summarize_slack_messages_mock,
@@ -272,7 +299,7 @@ async def test_handler_tldr_slash_command_non_public(
     get_channel_history_mock,
 ):
     # Setup
-    client = AsyncMock()
+    client = AsyncMock(spec=WebClient)
     say = AsyncMock()
     get_direct_message_channel_id_mock.return_value = "DM123"
     get_channel_history_mock.return_value = ["message1", "message2"]
@@ -281,13 +308,14 @@ async def test_handler_tldr_slash_command_non_public(
     get_text_and_blocks_for_say_mock.return_value = ("text", "blocks")
 
     # Execute
-    await handler_tldr_slash_command(
+    await handler_tldr_extended_slash_command(
         client,
         AsyncMock(),
         {
             # 'text': 'non-public',
             "channel_name": "general",
             "channel_id": "C123",
+            "user_id": "U123",
         },
         say,
         "U123",
@@ -305,7 +333,7 @@ async def test_handler_tldr_slash_command_non_public(
 @patch("ossai.handlers.summarize_slack_messages")
 @patch("ossai.handlers.get_text_and_blocks_for_say")
 @patch("ossai.handlers.get_direct_message_channel_id")
-async def test_handler_tldr_slash_command_public_extended(
+async def test_handler_tldr_extended_slash_command_public_extended(
     get_direct_message_channel_id_mock,
     get_text_and_blocks_for_say_mock,
     summarize_slack_messages_mock,
@@ -313,7 +341,7 @@ async def test_handler_tldr_slash_command_public_extended(
     get_channel_history_mock,
 ):
     # Setup
-    client = AsyncMock()
+    client = AsyncMock(spec=WebClient)
     say = AsyncMock()
     get_channel_history_mock.return_value = ["message1", "message2"]
     get_user_context_mock.return_value = {"user": "info"}
@@ -321,10 +349,16 @@ async def test_handler_tldr_slash_command_public_extended(
     get_text_and_blocks_for_say_mock.return_value = ("dummy text", "blocks")
 
     # Execute
-    await handler_tldr_slash_command(
+    await handler_tldr_extended_slash_command(
         client,
         AsyncMock(),
-        {"text": "public", "channel_name": "general", "channel_id": "C123"},
+        {
+            "text": "public",
+            "channel_name": "general",
+            "channel_id": "C123",
+            "user_id": "U123",
+            "message_ts": "1234567890.123456",
+        },
         say,
         "U123",
     )
@@ -351,8 +385,8 @@ async def test_handler_action_summarize_since_date(
     datetime_mock,
 ):
     # Setup
-    client = AsyncMock()
-    body = {
+    client = AsyncMock(spec=WebClient)
+    payload = {
         "channel": {"name": "general", "id": "C123"},
         "user": {"id": "U123"},
         "actions": [
@@ -374,7 +408,7 @@ async def test_handler_action_summarize_since_date(
     datetime_mock.fromtimestamp.return_value = mocked_date
 
     # Execute
-    await handler_action_summarize_since_date(client, body)
+    await handler_action_summarize_since_date(client, AsyncMock(), payload)
 
     # Verify
     get_direct_message_channel_id_mock.assert_called_once_with(client, "U123")
@@ -407,17 +441,19 @@ async def test_handler_tldr_since_slash_command_happy_path(
     get_since_timeframe_presets_mock, get_direct_message_channel_id_mock
 ):
     # Setup
-    client = AsyncMock()
+    client = AsyncMock(spec=WebClient)
     client.chat_postEphemeral = AsyncMock()
     say = AsyncMock()
     payload = {"user_id": "U123", "channel_id": "C123", "channel_name": "general"}
     get_since_timeframe_presets_mock.return_value = {"foo": "bar"}
     get_direct_message_channel_id_mock.return_value = "DM123"
+    ack = AsyncMock()
 
     # Execute
-    await handler_tldr_since_slash_command(client, payload, say)
+    await handler_tldr_since_slash_command(client, ack, payload, say)
 
     # Verify
+    ack.assert_called_once()
     client.chat_postEphemeral.assert_called_once_with(
         channel="C123",
         user="U123",
@@ -444,3 +480,144 @@ async def test_handler_tldr_since_slash_command_happy_path(
         channel="DM123",
         text="In #general, choose a date or timeframe to get your summary",
     )
+
+
+@pytest.mark.asyncio
+@patch("ossai.decorators.get_direct_message_channel_id")
+@patch("ossai.utils.get_bot_id")
+async def test_handlers_bot_not_in_channel(
+    get_bot_id_mock: AsyncMock,
+    get_direct_message_channel_id_mock: AsyncMock,
+) -> None:
+    USER_ID = "U123"
+    CHANNEL_ID = "C123"
+    DM_CHANNEL_ID = "DM123"
+
+    client = AsyncMock(spec=WebClient)
+    client.bots_info.return_value = {"bot": {"name": "TestBot"}}
+    say = AsyncMock()
+    ack = AsyncMock()
+    get_direct_message_channel_id_mock.return_value = DM_CHANNEL_ID
+    get_bot_id_mock.return_value = "B123"
+
+    handlers_to_test = [
+        (
+            handler_shortcuts,
+            (
+                client,
+                False,
+                {
+                    "channel": {"id": CHANNEL_ID},
+                    "user": {"id": USER_ID},
+                    "message_ts": "1234567890.123456",
+                },
+                say,
+                USER_ID,
+            ),
+        ),
+        (
+            handler_tldr_since_slash_command,
+            (
+                client,
+                ack,
+                {
+                    "user_id": USER_ID,
+                    "channel_id": CHANNEL_ID,
+                    "channel_name": "general",
+                },
+                say,
+            ),
+        ),
+        (
+            handler_sandbox_slash_command,
+            (
+                client,
+                ack,
+                {
+                    "user_id": USER_ID,
+                    "channel_id": CHANNEL_ID,
+                    "channel_name": "general",
+                },
+                say,
+                USER_ID,
+            ),
+        ),
+        (
+            handler_action_summarize_since_date,
+            (
+                client,
+                ack,
+                {
+                    "channel": {"name": "general", "id": CHANNEL_ID},
+                    "user": {"id": USER_ID},
+                    "actions": [
+                        {
+                            "action_id": "summarize_since_preset",
+                            "selected_option": {"value": "1676955600"},
+                        }
+                    ],
+                    "response_url": "http://example.com/response",
+                },
+            ),
+        ),
+        (
+            handler_topics_slash_command,
+            (
+                client,
+                ack,
+                {
+                    "user_id": USER_ID,
+                    "channel_id": CHANNEL_ID,
+                    "channel_name": "general",
+                },
+                say,
+                USER_ID,
+            ),
+        ),
+        (
+            handler_tldr_extended_slash_command,
+            (
+                client,
+                ack,
+                {
+                    "user_id": USER_ID,
+                    "channel_id": CHANNEL_ID,
+                    "channel_name": "general",
+                    "text": "",
+                },
+                say,
+                USER_ID,
+            ),
+        ),
+    ]
+
+    for handler, args in handlers_to_test:
+        client.reset_mock()
+        say.reset_mock()
+        ack.reset_mock()
+
+        client.conversations_replies.side_effect = SlackApiError(
+            message="channel_not_found", response={"error": "channel_not_found"}
+        )
+        client.chat_postEphemeral.side_effect = SlackApiError(
+            message="channel_not_found", response={"error": "channel_not_found"}
+        )
+        client.conversations_history.side_effect = SlackApiError(
+            message="channel_not_found", response={"error": "channel_not_found"}
+        )
+        say.side_effect = SlackApiError(
+            message="channel_not_found", response={"error": "channel_not_found"}
+        )
+
+        await handler(*args)
+
+        error_message = "Sorry, couldn't find the channel. Have you added `@TestBot` to the channel?"
+
+        client.chat_postEphemeral.assert_called_with(
+            channel=DM_CHANNEL_ID, user=USER_ID, text=error_message
+        )
+
+        client.conversations_replies.side_effect = None
+        client.chat_postEphemeral.side_effect = None
+        client.conversations_history.side_effect = None
+        say.side_effect = None
