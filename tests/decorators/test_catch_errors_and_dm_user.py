@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
-from ossai.decorators import catch_errors_dm_user
+from ossai.decorators.catch_error_dm_user import catch_errors_dm_user
 
 
 @pytest.mark.asyncio
@@ -32,7 +32,7 @@ async def test_catch_errors_dm_user_happy_path():
 
 
 @pytest.mark.asyncio
-@patch("ossai.decorators.logger")
+@patch("ossai.decorators.catch_error_dm_user.logger")
 async def test_catch_errors_dm_user_error_handling(mock_logger):
     # Setup
     client = AsyncMock(spec=WebClient)

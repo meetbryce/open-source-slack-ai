@@ -248,7 +248,7 @@ def test_handler_feedback_very_helpful_button(env_get_mock, client_mock):
 
 
 @pytest.mark.asyncio
-@patch("ossai.decorators.get_direct_message_channel_id")
+@patch("ossai.decorators.catch_error_dm_user.get_direct_message_channel_id")
 @patch("ossai.utils.get_bot_id")
 async def test_handler_shortcuts_channel_not_found_error(
     get_bot_id_mock, get_direct_message_channel_id_mock
@@ -483,7 +483,7 @@ async def test_handler_tldr_since_slash_command_happy_path(
 
 
 @pytest.mark.asyncio
-@patch("ossai.decorators.get_direct_message_channel_id")
+@patch("ossai.decorators.catch_error_dm_user.get_direct_message_channel_id")
 @patch("ossai.utils.get_bot_id")
 async def test_handlers_bot_not_in_channel(
     get_bot_id_mock: AsyncMock,

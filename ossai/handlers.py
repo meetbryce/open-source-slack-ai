@@ -7,7 +7,7 @@ from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 from langsmith import Client
 
-from ossai.decorators import catch_errors_dm_user
+from ossai.decorators.catch_error_dm_user import catch_errors_dm_user
 from ossai.logging_config import logger
 from ossai.summarizer import summarize_slack_messages
 from ossai.topic_analysis import analyze_topics_of_history
