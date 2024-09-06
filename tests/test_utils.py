@@ -1,6 +1,7 @@
 import runpy
 from unittest.mock import ANY, patch, MagicMock
 import time
+import uuid
 import pytest
 from slack_sdk.errors import SlackApiError
 
@@ -276,3 +277,29 @@ def test_get_since_timeframe_presets_values(mock_gmtime):
         assert (
             expected_value == actual["value"]
         ), f"'{expected_text}': Expected value {expected_value}, got {actual['value']}"
+
+
+def test_get_text_and_blocks_for_say_block_size():
+    title = "Test Title"
+    run_id = uuid.uuid4()
+    
+    # Create a message that's longer than 3000 characters
+    long_message = "A" * 4000
+    messages = [long_message]
+
+    _, blocks = utils.get_text_and_blocks_for_say(title, run_id, messages)
+
+    # Check that the title is in the first block
+    assert blocks[0]['text']['text'] == title
+
+    # Check that each block's text is no longer than 3000 characters
+    for block in blocks[1:-1]:  # Exclude the first (title) and last (buttons) blocks
+        assert len(block['text']['text']) <= 3000, f"Block text exceeds 3000 characters: {len(block['text']['text'])}"
+
+    # Check that all of the original message is included
+    combined_text = ''.join(block['text']['text'] for block in blocks[1:-1])
+    assert combined_text == long_message
+
+    # Check that the last block contains the buttons
+    assert blocks[-1]['type'] == 'actions'
+    assert len(blocks[-1]['elements']) == 3  # Three buttons

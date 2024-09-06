@@ -203,6 +203,7 @@ def get_parsed_messages(client, messages, with_names=True):
 def get_text_and_blocks_for_say(
     title: str, run_id: Union[uuid.UUID, None], messages: list
 ) -> tuple[str, list]:
+    CHAR_LIMIT = 3000
     text = "\n".join(messages)
 
     blocks = [
@@ -213,14 +214,22 @@ def get_text_and_blocks_for_say(
                 "text": title,
             },
         },
-        {
-            "type": "section",
-            "text": {
-                "type": "mrkdwn",
-                "text": text,
-            },
-        },
     ]
+
+    # Split text into multiple blocks if it exceeds 3000 characters
+    remaining_text = text
+    while len(remaining_text) > 0:
+        chunk = remaining_text[:CHAR_LIMIT]
+        blocks.append(
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": chunk,
+                },
+            }
+        )
+        remaining_text = remaining_text[CHAR_LIMIT:]
 
     if run_id is not None:
         blocks.append(

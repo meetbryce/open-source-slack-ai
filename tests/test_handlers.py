@@ -52,8 +52,25 @@ def shortcuts_payload():
 
 
 @pytest.fixture
-def say():
-    return AsyncMock()
+def say(**kwargs):
+    async def custom_say(**kwargs):
+        blocks = kwargs.get("blocks", [])
+        for block in blocks:
+            if block["type"] == "section" and len(block["text"]["text"]) > 3000:
+                error_response = {
+                    "ok": False,
+                    "error": "invalid_blocks",
+                    "errors": [
+                        "failed to match all allowed schemas [json-pointer:/blocks/0/text]",
+                        f"must be less than 3001 characters [json-pointer:/blocks/0/text/text]",
+                    ],
+                }
+                raise SlackApiError(
+                    "The request to the Slack API failed.", response=error_response
+                )
+        return {"ok": True, "message": {"ts": "1234567890.123456"}}
+
+    return AsyncMock(side_effect=custom_say)
 
 
 @pytest.mark.asyncio
@@ -629,10 +646,14 @@ async def test_handler_sandbox_slash_command_happy_path():
     say = AsyncMock()
     payload = {"user_id": "U123", "channel_id": "C123", "channel_name": "general"}
     client = AsyncMock(spec=WebClient)
-    
-    await handler_sandbox_slash_command(
-        client, ack, payload, say, user_id="foo123"
-    )
+
+    await handler_sandbox_slash_command(client, ack, payload, say, user_id="foo123")
     say.assert_called_once()
-    assert any("Useful summary of content goes here" in str(block) for block in say.call_args[1]['blocks'])
-    assert any("This is a test of the /sandbox command." in str(block) for block in say.call_args[1]['blocks'])
+    assert any(
+        "Useful summary of content goes here" in str(block)
+        for block in say.call_args[1]["blocks"]
+    )
+    assert any(
+        "This is a test of the /sandbox command." in str(block)
+        for block in say.call_args[1]["blocks"]
+    )
