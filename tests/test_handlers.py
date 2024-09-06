@@ -621,3 +621,18 @@ async def test_handlers_bot_not_in_channel(
         client.chat_postEphemeral.side_effect = None
         client.conversations_history.side_effect = None
         say.side_effect = None
+
+
+@pytest.mark.asyncio
+async def test_handler_sandbox_slash_command_happy_path():
+    ack = AsyncMock()
+    say = AsyncMock()
+    payload = {"user_id": "U123", "channel_id": "C123", "channel_name": "general"}
+    client = AsyncMock(spec=WebClient)
+    
+    await handler_sandbox_slash_command(
+        client, ack, payload, say, user_id="foo123"
+    )
+    say.assert_called_once()
+    assert any("Useful summary of content goes here" in str(block) for block in say.call_args[1]['blocks'])
+    assert any("This is a test of the /sandbox command." in str(block) for block in say.call_args[1]['blocks'])
