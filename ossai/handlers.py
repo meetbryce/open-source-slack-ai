@@ -106,14 +106,11 @@ async def handler_tldr_extended_slash_command(
     channel_id = payload["channel_id"]
     dm_channel_id = None
 
-    if text == "public":
-        await say("...")
-    else:
-        dm_channel_id = await get_direct_message_channel_id(client, user_id)
-        await say(channel=dm_channel_id, text="...")
+    dm_channel_id = await get_direct_message_channel_id(client, user_id)
+    await say(channel=dm_channel_id, text="...")
 
-    if text and text != "public":
-        return await say("ERROR: Invalid command. Try /tldr or /tldr public.")
+    if text:
+        return await say("ERROR: custom prompt support coming soon!")
 
     history = await get_channel_history(client, channel_id)
     history.reverse()
@@ -129,8 +126,6 @@ async def handler_tldr_extended_slash_command(
     text, blocks = get_text_and_blocks_for_say(
         title=title, run_id=run_id, messages=summary
     )
-    if text == "public":
-        return await say(text=text, blocks=blocks)
     return await say(channel=dm_channel_id, text=text, blocks=blocks)
 
 
@@ -139,6 +134,9 @@ async def handler_topics_slash_command(
     client: WebClient, ack, payload, say, user_id: str
 ):
     await ack()
+    text = payload.get("text", None)
+    if text:
+        return await say("ERROR: custom prompt support coming soon!")
     channel_id = payload["channel_id"]
     dm_channel_id = await get_direct_message_channel_id(client, user_id)
     await say(channel=dm_channel_id, text="...")
@@ -164,6 +162,9 @@ async def handler_tldr_since_slash_command(client: WebClient, ack, payload, say)
     await ack()
     title = "Choose your summary timeframe."
     dm_channel_id = await get_direct_message_channel_id(client, payload["user_id"])
+    text = payload.get("text", None)
+    if text:
+        return await say("ERROR: custom prompt support coming soon!")
 
     client.chat_postEphemeral(
         channel=payload["channel_id"],
@@ -241,6 +242,9 @@ async def handler_action_summarize_since_date(client: WebClient, ack, body):
 async def handler_sandbox_slash_command(
     client: WebClient, ack, payload, say, user_id: str
 ):
+    text = payload.get("text", None)
+    if text:
+        return await say("ERROR: custom prompt support coming soon!")
     logger.debug(f"Handling /sandbox command")
     await ack()
     run_id = str(uuid.uuid4())

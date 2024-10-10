@@ -18,13 +18,15 @@ features:
   slash_commands:
     - command: /tldr_extended
       description: Summarize channel history with open-source Slack AI
-      usage_hint: '["public" to post in channel]'
+      usage_hint: "[optional: provide a custom prompt]"
       should_escape: false
     - command: /tldr
       description: Analyze channel topics with open-source Slack AI
+      usage_hint: "[optional: provide a custom prompt]"
       should_escape: false
     - command: /tldr_since
-      description: "Summarize messages over a time period "
+      description: "Summarize messages over a time period"
+      usage_hint: "[optional: provide a custom prompt]"
       usage_hint: ""
       should_escape: false
 oauth_config:
