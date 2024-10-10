@@ -11,6 +11,8 @@ from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 from langchain.callbacks.tracers import LangChainTracer
 
+from ossai.logging_config import logger
+
 load_dotenv(override=True)
 _id_name_cache = {}
 
@@ -22,10 +24,10 @@ class CustomLangChainTracer(LangChainTracer):
 
     def handleText(self, text, runId):
         if not self.is_private:
-            print("passing text")
+            logger.info("passing text")
             super().handleText(text, runId)
         else:
-            print("passing no text")
+            logger.info("passing no text")
             super().handleText("", runId)
 
 
@@ -40,7 +42,7 @@ async def get_bot_id(client) -> str:
         response = client.auth_test()
         return response["bot_id"]
     except SlackApiError as e:
-        print(f"Error fetching bot ID: {e.response['error']}")
+        logger.error(f"Error fetching bot ID: {e.response['error']}")
         return "None"
 
 
@@ -72,7 +74,7 @@ async def get_direct_message_channel_id(client: WebClient, user_id: str) -> str:
         response = client.conversations_open(users=user_id)
         return response["channel"]["id"]
     except SlackApiError as e:
-        print(f"Error fetching bot DM channel ID: {e.response['error']}")
+        logger.error(f"Error fetching bot DM channel ID: {e.response['error']}")
         raise e
 
 
@@ -84,7 +86,7 @@ def get_is_private_and_channel_name(
         channel_name = channel_info["channel"]["name"]
         is_private = channel_info["channel"]["is_private"]
     except Exception as e:
-        print(f"Error getting channel info for is_private, defaulting to private: {e}")
+        logger.error(f"Error getting channel info for is_private, defaulting to private: {e}")
         channel_name = "unknown"
         is_private = True
     return is_private, channel_name
@@ -153,7 +155,7 @@ def get_name_from_id(client: WebClient, user_or_bot_id: str, is_bot=False) -> st
             _id_name_cache[user_or_bot_id] = name
             return name
         else:
-            print("user fetch failed")
+            logger.error("user fetch failed")
             raise SlackApiError("user fetch failed", user_response)
     except SlackApiError as e:
         if e.response["error"] == "user_not_found":
@@ -163,13 +165,13 @@ def get_name_from_id(client: WebClient, user_or_bot_id: str, is_bot=False) -> st
                     _id_name_cache[user_or_bot_id] = bot_response["bot"]["name"]
                     return bot_response["bot"]["name"]
                 else:
-                    print("bot fetch failed")
+                    logger.error("bot fetch failed")
                     raise SlackApiError("bot fetch failed", bot_response)
             except SlackApiError as e2:
-                print(
+                logger.error(
                     f"Error fetching name for bot {user_or_bot_id=}: {e2.response['error']}"
                 )
-        print(f"Error fetching name for {user_or_bot_id=} {is_bot=} {e=}")
+        logger.error(f"Error fetching name for {user_or_bot_id=} {is_bot=} {e=}")
 
     return "Someone"
 
@@ -267,13 +269,13 @@ async def get_user_context(client: WebClient, user_id: str) -> dict:
     """
     try:
         user_info = client.users_info(user=user_id)
-        print(user_info)
+        logger.debug(user_info)
         if user_info["ok"]:
             name = user_info["user"]["name"]
             title = user_info["user"]["profile"]["title"]
             return {"name": name, "title": title}
     except SlackApiError as e:
-        print(f"Failed to fetch username: {e}")
+        logger.error(f"Failed to fetch username: {e}")
         return {}
 
 
@@ -293,10 +295,10 @@ def get_workspace_name(client: WebClient):
         if response["ok"]:
             return response["team"]["name"]
         else:
-            print(f"Error retrieving workspace name: {response['error']}")
+            logger.warning(f"Error retrieving workspace name: {response['error']}. Falling back to WORKSPACE_NAME_FALLBACK.")
             return os.getenv("WORKSPACE_NAME_FALLBACK", "")
     except SlackApiError as e:
-        print(f"Error retrieving workspace name: {e.response['error']}")
+        logger.error(f"Error retrieving workspace name: {e.response['error']}")
         return os.getenv("WORKSPACE_NAME_FALLBACK", "")  # None
 
 
@@ -351,7 +353,7 @@ def get_since_timeframe_presets():
 
 
 def main():
-    print("DEBUGGING")
+    logger.error("DEBUGGING")
 
 
 if __name__ == "__main__":

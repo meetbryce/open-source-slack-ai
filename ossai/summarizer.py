@@ -8,6 +8,7 @@ from langchain_openai import ChatOpenAI
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 
+from ossai.logging_config import logger
 from ossai.utils import (
     get_parsed_messages,
     get_langsmith_config,
@@ -84,7 +85,7 @@ class Summarizer:
             channel=channel,
             is_private=is_private,
         )
-        print(f"{langsmith_config=}")
+        logger.info(f"{langsmith_config=}")
         result = chain.invoke(
             {"text": text, "language": self.config["language"]}, config=langsmith_config
         )
@@ -190,7 +191,7 @@ class Summarizer:
         is_private, channel_name = get_is_private_and_channel_name(client, channel_id)
 
         message_splits = self.split_messages_by_token_count(client, messages)
-        print(f"{len(message_splits)=}")
+        logger.info(f"{len(message_splits)=}")
         result_text = []
 
         for message_split in message_splits:
@@ -203,10 +204,10 @@ class Summarizer:
                     is_private=is_private,
                 )
             except openai.RateLimitError as e:
-                print(e)
+                logger.error(e)
                 return [f"Sorry, OpenAI rate limit exceeded..."], None
             except openai.AuthenticationError as e:
-                print(e)
+                logger.error(e)
                 return ["Sorry, unable to authenticate with OpenAI"], None
             result_text.append(text)
 
@@ -214,7 +215,7 @@ class Summarizer:
 
 
 def main():
-    print("DEBUGGING")
+    logger.error("DEBUGGING")
 
 
 if __name__ == "__main__":

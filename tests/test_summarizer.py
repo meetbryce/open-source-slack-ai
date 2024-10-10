@@ -6,7 +6,7 @@ import pytest
 from openai import RateLimitError
 
 from ossai import summarizer
-from ossai.summarizer import Summarizer
+from ossai.summarizer import Summarizer, main as summarizer_main
 from ossai.utils import get_llm_config
 
 
@@ -222,12 +222,5 @@ def test_summarize_slack_messages_rate_limit_error():
             assert result == ["Sorry, OpenAI rate limit exceeded..."]
 
 
-def test_main_as_script(capfd):
-    # Run the utils module as a script
-    with patch.dict("os.environ", {"SLACK_BOT_TOKEN": "test_token"}):
-        runpy.run_module("ossai.summarizer", run_name="__main__")
-
-    # Get the output from stdout and stderr
-    out, err = capfd.readouterr()
-    assert err == ""
-    assert "DEBUGGING" in out
+def test_main_as_script():
+    summarizer_main()

@@ -146,7 +146,11 @@ async def handle_thread_private_shortcut(ack, payload, say):
     await handler_shortcuts(client, True, payload, say, user_id=payload["user"]["id"])
 
 
-if __name__ == "__main__":
+def main():
     import uvicorn
 
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
+
+if __name__ == "__main__":
+    main()

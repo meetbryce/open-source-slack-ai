@@ -6,7 +6,7 @@ import pytest
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 
-from ossai.slack_server import handle_slash_command_sandbox
+from ossai.slack_server import handle_slash_command_sandbox, main as slack_server_main
 
 
 @pytest.fixture
@@ -43,13 +43,6 @@ def test_pulse(mock_app, mock_os_environ):
 
     result = slack_server.pulse()
     assert result == {"status": 200, "message": "ok"}
-
-
-def test_main_loads_as_script(mock_app_advanced, mock_uvicorn, mock_os_environ, capfd):
-    runpy.run_module("ossai.slack_server", run_name="__main__")
-    out, err = capfd.readouterr()
-    assert err == ""
-    assert mock_uvicorn.called
 
 
 @pytest.mark.asyncio

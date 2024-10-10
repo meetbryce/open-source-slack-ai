@@ -17,7 +17,7 @@ from sklearn.decomposition import TruncatedSVD
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 from ossai.utils import get_llm_config, get_langsmith_config
-
+from ossai.logging_config import logger
 load_dotenv(override=True)
 nltk.download("stopwords")
 try:
@@ -25,7 +25,7 @@ try:
         "en_core_web_md"
     )  # `poetry add {download link}` from https://spacy.io/models/en#en_core_web_md
 except:
-    print(
+    logger.warning(
         "Downloading language model for the spaCy POS tagger (don't worry, this will only happen once)"
     )
     from spacy.cli import download
@@ -129,11 +129,11 @@ async def _synthesize_topics(
         channel=channel,
         is_private=is_private,
     )
-    print(f"{langsmith_config=}")
+    logger.debug(f"{langsmith_config=}")
     result = chain.invoke(
         {"topics_str": topics_str, "channel": channel}, config=langsmith_config
     )
-    print(result)
+    logger.debug(result)
 
     # parse the message reformat it for delivery via Slack message
     result = result.replace("\n* ", "\n- ")
@@ -197,6 +197,6 @@ async def analyze_topics_of_history(
         for topic, terms in model.items():
             topics_str += f" • {', '.join(terms)}\n"
 
-    print(topics_str)
+    logger.debug(topics_str)
 
     return await _synthesize_topics(topics_str, channel_name, user, is_private)

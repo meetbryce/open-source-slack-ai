@@ -7,7 +7,6 @@ from slack_sdk.errors import SlackApiError
 
 from ossai import utils
 
-
 @pytest.fixture
 def mock_client():
     with patch("ossai.utils.WebClient") as mock_client:
@@ -303,3 +302,7 @@ def test_get_text_and_blocks_for_say_block_size():
     # Check that the last block contains the buttons
     assert blocks[-1]['type'] == 'actions'
     assert len(blocks[-1]['elements']) == 3  # Three buttons
+
+
+def test_main_as_script():
+    utils.main()
