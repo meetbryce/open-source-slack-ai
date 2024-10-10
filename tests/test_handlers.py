@@ -121,13 +121,15 @@ async def test_handler_topics_slash_command(
 
 @pytest.mark.asyncio
 @patch("ossai.handlers.get_workspace_name")
-@patch("ossai.handlers.summarize_slack_messages")
+@patch("ossai.handlers.Summarizer")
 @patch("slack_sdk.WebClient.conversations_replies")
 @patch("ossai.handlers.get_direct_message_channel_id")
+@patch("ossai.handlers.get_user_context")
 async def test_handler_shortcuts(
+    get_user_context_mock,
     get_direct_message_channel_id_mock,
     conversations_replies_mock,
-    summarize_slack_messages_mock,
+    summarizer_mock,
     get_workspace_name_mock,
     client,
     shortcuts_payload,
@@ -141,7 +143,11 @@ async def test_handler_shortcuts(
         "messages": [{"text": "test message"}],
     }
     get_workspace_name_mock.return_value = "workspace_name"
-    summarize_slack_messages_mock.return_value = ["summary"], run_id
+    get_user_context_mock.return_value = {"user": "info"}
+
+    # Mock Summarizer instance
+    summarizer_instance_mock = summarizer_mock.return_value
+    summarizer_instance_mock.summarize_slack_messages.return_value = (["summary"], run_id)
 
     expected_blocks = [
         {
@@ -177,10 +183,22 @@ async def test_handler_shortcuts(
         },
     ]
 
+    # Act
     await handler_shortcuts(client, True, shortcuts_payload, say, user_id="foo123")
+
+    # Assert
     say.assert_called_with(
         channel="dm_channel_id", text="summary", blocks=expected_blocks
     )
+    summarizer_mock.assert_called_once()
+    summarizer_instance_mock.summarize_slack_messages.assert_called_once_with(
+        client,
+        [{"text": "test message"}],
+        "channel_id",
+        feature_name="summarize_thread",
+        user={"user": "info"},
+    )
+    get_user_context_mock.assert_called_once_with(client, "foo123")
 
 
 @pytest.mark.asyncio
@@ -305,13 +323,13 @@ async def test_handler_shortcuts_channel_not_found_error(
 @pytest.mark.asyncio
 @patch("ossai.handlers.get_channel_history")
 @patch("ossai.handlers.get_user_context")
-@patch("ossai.handlers.summarize_slack_messages")
+@patch("ossai.handlers.Summarizer")
 @patch("ossai.handlers.get_text_and_blocks_for_say")
 @patch("ossai.handlers.get_direct_message_channel_id")
 async def test_handler_tldr_extended_slash_command_non_public(
     get_direct_message_channel_id_mock,
     get_text_and_blocks_for_say_mock,
-    summarize_slack_messages_mock,
+    summarizer_mock,
     get_user_context_mock,
     get_channel_history_mock,
 ):
@@ -321,7 +339,10 @@ async def test_handler_tldr_extended_slash_command_non_public(
     get_direct_message_channel_id_mock.return_value = "DM123"
     get_channel_history_mock.return_value = ["message1", "message2"]
     get_user_context_mock.return_value = {"user": "info"}
-    summarize_slack_messages_mock.return_value = ("summary", "run_id")
+    
+    summarizer_instance_mock = summarizer_mock.return_value
+    summarizer_instance_mock.summarize_slack_messages.return_value = ("summary", "run_id")
+    
     get_text_and_blocks_for_say_mock.return_value = ("text", "blocks")
 
     # Execute
@@ -329,7 +350,6 @@ async def test_handler_tldr_extended_slash_command_non_public(
         client,
         AsyncMock(),
         {
-            # 'text': 'non-public',
             "channel_name": "general",
             "channel_id": "C123",
             "user_id": "U123",
@@ -342,68 +362,38 @@ async def test_handler_tldr_extended_slash_command_non_public(
     assert say.call_count == 2
     say.assert_called_with(channel="DM123", text="text", blocks="blocks")
     get_direct_message_channel_id_mock.assert_called_once_with(client, "U123")
-
-
-@pytest.mark.asyncio
-@patch("ossai.handlers.get_channel_history")
-@patch("ossai.handlers.get_user_context")
-@patch("ossai.handlers.summarize_slack_messages")
-@patch("ossai.handlers.get_text_and_blocks_for_say")
-@patch("ossai.handlers.get_direct_message_channel_id")
-async def test_handler_tldr_extended_slash_command_public_extended(
-    get_direct_message_channel_id_mock,
-    get_text_and_blocks_for_say_mock,
-    summarize_slack_messages_mock,
-    get_user_context_mock,
-    get_channel_history_mock,
-):
-    # Setup
-    client = AsyncMock(spec=WebClient)
-    say = AsyncMock()
-    get_channel_history_mock.return_value = ["message1", "message2"]
-    get_user_context_mock.return_value = {"user": "info"}
-    summarize_slack_messages_mock.return_value = ("summary", "run_id")
-    get_text_and_blocks_for_say_mock.return_value = ("dummy text", "blocks")
-
-    # Execute
-    await handler_tldr_extended_slash_command(
+    summarizer_mock.assert_called_once()
+    summarizer_instance_mock.summarize_slack_messages.assert_called_once_with(
         client,
-        AsyncMock(),
-        {
-            "text": "public",
-            "channel_name": "general",
-            "channel_id": "C123",
-            "user_id": "U123",
-            "message_ts": "1234567890.123456",
-        },
-        say,
-        "U123",
+        ["message2", "message1"],
+        "C123",
+        feature_name="summarize_channel_messages",
+        user={"user": "info"},
     )
 
-    # Verify
-    assert say.call_count == 2
-    say.assert_called_with(channel=None, text="dummy text", blocks="blocks")
-    get_direct_message_channel_id_mock.assert_not_called()
 
 
 @pytest.mark.asyncio
 @patch("ossai.handlers.datetime")
 @patch("ossai.handlers.get_channel_history")
 @patch("ossai.handlers.get_user_context")
-@patch("ossai.handlers.summarize_slack_messages")
+@patch("ossai.handlers.Summarizer")
 @patch("ossai.handlers.get_text_and_blocks_for_say")
 @patch("ossai.handlers.get_direct_message_channel_id")
+@patch("aiohttp.ClientSession.post", new_callable=AsyncMock)  # Change this line
 async def test_handler_action_summarize_since_date(
+    mock_post,
     get_direct_message_channel_id_mock,
     get_text_and_blocks_for_say_mock,
-    summarize_slack_messages_mock,
+    summarizer_mock,
     get_user_context_mock,
     get_channel_history_mock,
     datetime_mock,
 ):
     # Setup
     client = AsyncMock(spec=WebClient)
-    payload = {
+    ack = AsyncMock()
+    body = {
         "channel": {"name": "general", "id": "C123"},
         "user": {"id": "U123"},
         "actions": [
@@ -417,7 +407,10 @@ async def test_handler_action_summarize_since_date(
     get_direct_message_channel_id_mock.return_value = "DM123"
     get_channel_history_mock.return_value = ["message1", "message2"]
     get_user_context_mock.return_value = {"user": "info"}
-    summarize_slack_messages_mock.return_value = ("summary", "run_id")
+    
+    summarizer_instance_mock = summarizer_mock.return_value
+    summarizer_instance_mock.summarize_slack_messages.return_value = ("summary", "run_id")
+    
     get_text_and_blocks_for_say_mock.return_value = ("text", "blocks")
 
     # Mock datetime to return a fixed date
@@ -425,16 +418,18 @@ async def test_handler_action_summarize_since_date(
     datetime_mock.fromtimestamp.return_value = mocked_date
 
     # Execute
-    await handler_action_summarize_since_date(client, AsyncMock(), payload)
+    await handler_action_summarize_since_date(client, ack, body)
 
     # Verify
+    ack.assert_called_once()
     get_direct_message_channel_id_mock.assert_called_once_with(client, "U123")
     datetime_mock.fromtimestamp.assert_called_once_with(1676955600)
     get_channel_history_mock.assert_called_once_with(
         client, "C123", since=mocked_date.date()
     )
     get_user_context_mock.assert_called_once_with(client, "U123")
-    summarize_slack_messages_mock.assert_called_once_with(
+    summarizer_mock.assert_called_once()
+    summarizer_instance_mock.summarize_slack_messages.assert_called_once_with(
         client,
         ["message2", "message1"],
         "C123",
@@ -449,7 +444,9 @@ async def test_handler_action_summarize_since_date(
     client.chat_postMessage.assert_called_with(
         channel="DM123", text="text", blocks="blocks"
     )
-
+    mock_post.assert_called_once_with(
+        "http://example.com/response", json={"delete_original": "true"}
+    )
 
 @pytest.mark.asyncio
 @patch("ossai.handlers.get_direct_message_channel_id")

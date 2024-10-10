@@ -9,7 +9,7 @@ from langsmith import Client
 
 from ossai.decorators.catch_error_dm_user import catch_errors_dm_user
 from ossai.logging_config import logger
-from ossai.summarizer import summarize_slack_messages
+from ossai.summarizer import Summarizer
 from ossai.topic_analysis import analyze_topics_of_history
 from ossai.utils import (
     get_direct_message_channel_id,
@@ -82,7 +82,8 @@ async def handler_shortcuts(
 
         title = f'*Summary of <{link}|{"thread" if len(messages) > 1 else "message"}>:*\n>{thread_hint}\n'
         user = await get_user_context(client, user_id)
-        summary, run_id = summarize_slack_messages(
+        summarizer = Summarizer()
+        summary, run_id = summarizer.summarize_slack_messages(
             client, messages, channel_id, feature_name="summarize_thread", user=user
         )
         text, blocks = get_text_and_blocks_for_say(
@@ -116,7 +117,8 @@ async def handler_tldr_extended_slash_command(
     history.reverse()
     user = await get_user_context(client, user_id)
     title = f"*Summary of #{channel_name}* (last {len(history)} messages)\n"
-    summary, run_id = summarize_slack_messages(
+    summarizer = Summarizer()
+    summary, run_id = summarizer.summarize_slack_messages(
         client,
         history,
         channel_id,
@@ -225,7 +227,8 @@ async def handler_action_summarize_since_date(client: WebClient, ack, body):
     history = await get_channel_history(client, channel_id, since=since_datetime)
     history.reverse()
     user = await get_user_context(client, user_id)
-    summary, run_id = summarize_slack_messages(
+    summarizer = Summarizer()
+    summary, run_id = summarizer.summarize_slack_messages(
         client, history, channel_id, feature_name=feature_name, user=user
     )
     text, blocks = get_text_and_blocks_for_say(
