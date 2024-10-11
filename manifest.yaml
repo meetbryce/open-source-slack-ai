@@ -22,7 +22,6 @@ features:
       should_escape: false
     - command: /tldr
       description: Analyze channel topics with open-source Slack AI
-      usage_hint: "[optional: provide a custom prompt]"
       should_escape: false
     - command: /tldr_since
       description: "Summarize messages over a time period"
