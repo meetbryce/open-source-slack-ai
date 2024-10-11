@@ -11,18 +11,17 @@ from langchain_core.prompts import ChatPromptTemplate
 
 from ossai.logging_config import logger
 from ossai.utils import (
-    get_parsed_messages,
     get_langsmith_config,
     get_llm_config,
-    get_is_private_and_channel_name,
 )
-
+from ossai.slack_context import SlackContext
 load_dotenv(override=True)
 
 
 class Summarizer:
-    def __init__(self, custom_prompt: Optional[str] = None):
+    def __init__(self, slack_context: SlackContext, custom_prompt: Optional[str] = None):
         # todo: apply pydantic model
+        self.slack_context = slack_context
         self.config = get_llm_config()
         self.model = ChatOpenAI(
             model=self.config["chat_model"], temperature=self.config["temperature"]
@@ -52,7 +51,7 @@ class Summarizer:
             tuple[str, UUID]: The summarized chat log in bullet point format and the run ID.
 
         Examples:
-            # >>> summarizer = Summarizer()
+            # >>> summarizer = Summarizer(slack_context)
             # >>> summarizer.summarize("Alice: Hi\nBob: Hello\nAlice: How are you?\nBob: I'm doing well, thanks.", "test", "user1", "general")
             '- Alice greeted Bob.\n- Bob responded with a greeting.\n- Alice asked how Bob was doing.
             \n- Bob replied that he was doing well.', UUID('...')
@@ -148,19 +147,18 @@ class Summarizer:
         return sum(map(counter, matches))
 
     def split_messages_by_token_count(
-        self, client, messages: list[dict]
+        self, messages: list[dict]
     ) -> list[list[str]]:
         """
         Split a list of strings into sub lists with a maximum token count.
 
         Args:
-            client: The Slack client.
             messages (list[dict]): A list of Slack messages to be split.
 
         Returns:
             list[list[str]]: A list of sub lists, where each sublist has a token count less than or equal to max_body_tokens
         """
-        parsed_messages = get_parsed_messages(client, messages)
+        parsed_messages = self.slack_context.get_parsed_messages(messages)
 
         body_token_counts = [
             self.estimate_openai_chat_token_count(msg) for msg in parsed_messages
@@ -183,7 +181,6 @@ class Summarizer:
 
     def summarize_slack_messages(
         self,
-        client,
         messages: list,
         channel_id: str,
         feature_name: str,
@@ -197,7 +194,6 @@ class Summarizer:
         The summary is returned as a list, with the context message as the first element.
 
         Args:
-            client: The slack client.
             messages (list): A list of slack messages to be summarized.
             channel_id (str): The ID of the Slack channel.
             feature_name (str): The name of the feature being used.
@@ -207,9 +203,9 @@ class Summarizer:
             tuple[list, UUID]: A list of summary text and the run ID.
         """
         # Determine if the channel is private
-        is_private, channel_name = get_is_private_and_channel_name(client, channel_id)
+        is_private, channel_name = self.slack_context.get_is_private_and_channel_name(channel_id)
 
-        message_splits = self.split_messages_by_token_count(client, messages)
+        message_splits = self.split_messages_by_token_count(messages)
         logger.info(f"{len(message_splits)=}")
         result_text = []
 

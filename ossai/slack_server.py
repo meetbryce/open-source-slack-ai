@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from slack_bolt.adapter.socket_mode.aiohttp import AsyncSocketModeHandler
 from slack_bolt.async_app import AsyncApp
 from slack_sdk import WebClient
+from ossai.slack_context import SlackContext
 
 load_dotenv(override=True)
 
@@ -88,27 +89,29 @@ app.add_middleware(
 @async_app.command("/tldr_extended")
 async def handle_tldr_extended_slash_command(ack, payload, say):
     return await handler_tldr_extended_slash_command(
-        client, ack, payload, say, user_id=payload["user_id"]
+        SlackContext(client), ack, payload, say, user_id=payload["user_id"]
     )
 
 
 @async_app.command("/tldr")
 async def handle_slash_command_topics(ack, payload, say):
     return await handler_topics_slash_command(
-        client, ack, payload, say, user_id=payload["user_id"]
+        SlackContext(client), ack, payload, say, user_id=payload["user_id"]
     )
 
 
 @async_app.command("/sandbox")
 async def handle_slash_command_sandbox(ack, payload, say):
     return await handler_sandbox_slash_command(
-        client, ack, payload, say, user_id=payload["user_id"]
+        SlackContext(client), ack, payload, say, user_id=payload["user_id"]
     )
 
 
 @async_app.command("/tldr_since")
 async def handle_slash_command_tldr_since(ack, payload, say):
-    return await handler_tldr_since_slash_command(client, ack, payload, say)
+    return await handler_tldr_since_slash_command(
+        SlackContext(client), ack, payload, say
+    )
 
 
 # MARK: - ACTIONS
@@ -118,7 +121,7 @@ async def handle_slash_command_tldr_since(ack, payload, say):
 @async_app.action("summarize_since_preset")
 async def handle_action_summarize_since_date(ack, body, logger):
     await ack()
-    await handler_action_summarize_since_date(client, ack, body)
+    await handler_action_summarize_since_date(SlackContext(client), ack, body)
     return logger.info(body)
 
 
@@ -137,13 +140,17 @@ async def handle_feedback(ack, body, logger):
 @async_app.shortcut("thread")
 async def handle_thread_shortcut(ack, payload, say):
     await ack()
-    await handler_shortcuts(client, False, payload, say, user_id=payload["user"]["id"])
+    await handler_shortcuts(
+        SlackContext(client), False, payload, say, user_id=payload["user"]["id"]
+    )
 
 
 @async_app.shortcut("thread_private")
 async def handle_thread_private_shortcut(ack, payload, say):
     await ack()
-    await handler_shortcuts(client, True, payload, say, user_id=payload["user"]["id"])
+    await handler_shortcuts(
+        SlackContext(client), True, payload, say, user_id=payload["user"]["id"]
+    )
 
 
 def main():

@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field, ValidationError
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 from ossai.logging_config import logger
-from ossai.utils import get_bot_id, get_direct_message_channel_id
+from ossai.slack_context import SlackContext
 
 
 class SlackPayload(BaseModel):
@@ -22,8 +22,9 @@ class SlackPayload(BaseModel):
 
 def catch_errors_dm_user(func):
     @wraps(func)
-    async def wrapper(client: WebClient, *args, **kwargs):
-        assert isinstance(client, WebClient), "client must be a Slack WebClient"
+    async def wrapper(slack_context: SlackContext, *args, **kwargs):
+        assert isinstance(slack_context, SlackContext), "slack_context must be a SlackContext"
+        assert isinstance(slack_context.client, WebClient), "slack_context.client must be a Slack WebClient"
 
         payload = None
         if args:
@@ -38,17 +39,17 @@ def catch_errors_dm_user(func):
             # Continue execution even if validation fails
 
         try:
-            return await func(client, *args, **kwargs)
+            return await func(slack_context, *args, **kwargs)
         except SlackApiError as e:
-            await _handle_slack_api_error(client, payload, payload_dict, e)
+            await _handle_slack_api_error(slack_context, payload, payload_dict, e)
         except Exception as e:
-            await _handle_unknown_error(client, payload, payload_dict, e)
+            await _handle_unknown_error(slack_context, payload, payload_dict, e)
 
     return wrapper
 
 
 async def _handle_slack_api_error(
-    client: WebClient,
+    slack_context: SlackContext,
     payload: Optional[SlackPayload],
     payload_dict: dict,
     error: SlackApiError,
@@ -57,7 +58,7 @@ async def _handle_slack_api_error(
     if error.response["error"] in ("not_in_channel", "channel_not_found"):
         user_id = _get_user_id(payload, payload_dict)
         channel_id, error_type, error_message = await _handle_channel_error(
-            client, user_id
+            slack_context, user_id
         )
     else:
         channel_id = _get_channel_id(payload, payload_dict)
@@ -65,21 +66,21 @@ async def _handle_slack_api_error(
         error_message = f"Sorry, an unexpected error occurred. `{error.response['error']}`\n\n```{str(error)}```"
 
     user_id = _get_user_id(payload, payload_dict)
-    await _send_error_message(client, channel_id, user_id, error_type, error_message)
+    await _send_error_message(slack_context.client, channel_id, user_id, error_type, error_message)
 
 
-async def _handle_channel_error(client: WebClient, user_id: str):
-    channel_id = await get_direct_message_channel_id(client, user_id)
+async def _handle_channel_error(slack_context: SlackContext, user_id: str):
+    channel_id = await slack_context.get_direct_message_channel_id(user_id)
     error_type = "Not in channel"
-    bot_id = await get_bot_id(client)
-    bot_info = client.bots_info(bot=bot_id)
+    bot_id = await slack_context.get_bot_id()
+    bot_info = slack_context.client.bots_info(bot=bot_id)
     bot_name = bot_info["bot"]["name"]
     error_message = f"Sorry, couldn't find the channel. Have you added `@{bot_name}` to the channel?"
     return channel_id, error_type, error_message
 
 
 async def _handle_unknown_error(
-    client: WebClient,
+    slack_context: SlackContext,
     payload: Optional[SlackPayload],
     payload_dict: dict,
     error: Exception,
@@ -89,7 +90,7 @@ async def _handle_unknown_error(
     logger.error(f"[Unknown error] {error}.", exc_info=True)
     channel_id = _get_channel_id(payload, payload_dict)
     user_id = _get_user_id(payload, payload_dict)
-    await _send_error_message(client, channel_id, user_id, error_type, error_message)
+    await _send_error_message(slack_context.client, channel_id, user_id, error_type, error_message)
 
 
 async def _send_error_message(client, channel_id, user_id, error_type, error_message):
@@ -97,7 +98,6 @@ async def _send_error_message(client, channel_id, user_id, error_type, error_mes
         f"running _send_error_message() with {channel_id=} {user_id=} {error_type=} {error_message=}"
     )
     try:
-        # ? is this sometime async other times not?
         await client.chat_postEphemeral(
             channel=channel_id, user=user_id, text=error_message
         )

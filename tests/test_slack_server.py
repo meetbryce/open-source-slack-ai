@@ -6,6 +6,7 @@ import pytest
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 
+from ossai.slack_context import SlackContext
 from ossai.slack_server import handle_slash_command_sandbox, main as slack_server_main
 
 
@@ -64,5 +65,6 @@ async def test_handle_slash_command_sandbox(
 
     # Assert
     mock_handler_sandbox_slash_command.assert_called_once_with(
-        mock_client, mock_ack, mock_payload, mock_say, user_id=mock_user_id
+        ANY, mock_ack, mock_payload, mock_say, user_id=mock_user_id
     )
+    assert isinstance(mock_handler_sandbox_slash_command.call_args[0][0], SlackContext)

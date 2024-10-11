@@ -12,18 +12,14 @@ from ossai.logging_config import logger
 from ossai.summarizer import Summarizer
 from ossai.topic_analysis import analyze_topics_of_history
 from ossai.utils import (
-    get_direct_message_channel_id,
-    get_workspace_name,
-    get_channel_history,
-    get_parsed_messages,
-    get_user_context,
-    get_is_private_and_channel_name,
     get_text_and_blocks_for_say,
     get_since_timeframe_presets,
 )
+from ossai.slack_context import SlackContext
 
 _custom_prompt_cache = {}
 
+# FIXME: basically, i need to have all handlers take `slack_context` not `client`
 
 def handler_feedback(body):
     """
@@ -54,22 +50,23 @@ def handler_feedback(body):
 
 @catch_errors_dm_user
 async def handler_shortcuts(
-    client: WebClient, is_private: bool, payload, say, user_id: str
+    slack_context: SlackContext, is_private: bool, payload, say, user_id: str
 ):
+    client = slack_context.client
     channel_id = (
         payload["channel"]["id"] if payload["channel"]["id"] else payload["channel_id"]
     )
-    dm_channel_id = await get_direct_message_channel_id(client, user_id)
+    dm_channel_id = await slack_context.get_direct_message_channel_id(user_id)
     channel_id_for_say = dm_channel_id if is_private else channel_id
     await say(channel=channel_id_for_say, text="...")
 
-    response = client.conversations_replies(
+    response = slack_context.client.conversations_replies(
         channel=channel_id, ts=payload["message_ts"]
     )
     if response["ok"]:
         messages = response["messages"]
         original_message = messages[0]["text"]
-        workspace_name = get_workspace_name(client)
+        workspace_name = slack_context.get_workspace_name()
         link = f"https://{workspace_name}.slack.com/archives/{channel_id}/p{payload['message_ts'].replace('.', '')}"
 
         original_message = original_message.split("\n")
@@ -83,10 +80,10 @@ async def handler_shortcuts(
         )
 
         title = f'*Summary of <{link}|{"thread" if len(messages) > 1 else "message"}>:*\n>{thread_hint}\n'
-        user = await get_user_context(client, user_id)
-        summarizer = Summarizer()
+        user = await slack_context.get_user_context(user_id)
+        summarizer = Summarizer(slack_context)
         summary, run_id = summarizer.summarize_slack_messages(
-            client, messages, channel_id, feature_name="summarize_thread", user=user
+            messages, channel_id, feature_name="summarize_thread", user=user
         )
         text, blocks = get_text_and_blocks_for_say(
             title=title, run_id=run_id, messages=summary
@@ -101,24 +98,23 @@ async def handler_shortcuts(
 
 @catch_errors_dm_user
 async def handler_tldr_extended_slash_command(
-    client: WebClient, ack, payload, say, user_id: str
+    slack_context: SlackContext, ack, payload, say, user_id: str
 ):
     await ack()
+    client = slack_context.client
     channel_name = payload["channel_name"]
     channel_id = payload["channel_id"]
-    dm_channel_id = None
 
-    dm_channel_id = await get_direct_message_channel_id(client, user_id)
+    dm_channel_id = await slack_context.get_direct_message_channel_id(user_id)
     await say(channel=dm_channel_id, text="...")
 
-    history = await get_channel_history(client, channel_id)
+    history = await slack_context.get_channel_history(channel_id)
     history.reverse()
-    user = await get_user_context(client, user_id)
+    user = await slack_context.get_user_context(user_id)
     title = f"*Summary of #{channel_name}* (last {len(history)} messages)\n"
     custom_prompt = payload.get("text", None)
-    summarizer = Summarizer(custom_prompt=custom_prompt)
+    summarizer = Summarizer(slack_context, custom_prompt=custom_prompt)
     summary, run_id = summarizer.summarize_slack_messages(
-        client,
         history,
         channel_id,
         feature_name="summarize_channel_messages",
@@ -132,19 +128,20 @@ async def handler_tldr_extended_slash_command(
 
 @catch_errors_dm_user
 async def handler_topics_slash_command(
-    client: WebClient, ack, payload, say, user_id: str
+    slack_context: SlackContext, ack, payload, say, user_id: str
 ):
     await ack()
+    client = slack_context.client
     channel_id = payload["channel_id"]
-    dm_channel_id = await get_direct_message_channel_id(client, user_id)
+    dm_channel_id = await slack_context.get_direct_message_channel_id(user_id)
     await say(channel=dm_channel_id, text="...")
 
-    history = await get_channel_history(client, channel_id)
+    history = await slack_context.get_channel_history(channel_id)
     history.reverse()
 
-    messages = get_parsed_messages(client, history, with_names=False)
-    user = await get_user_context(client, user_id)
-    is_private, channel_name = get_is_private_and_channel_name(client, channel_id)
+    messages = slack_context.get_parsed_messages(history, with_names=False)
+    user = await slack_context.get_user_context(user_id)
+    is_private, channel_name = slack_context.get_is_private_and_channel_name(channel_id)
     custom_prompt = payload.get("text", None)
     if custom_prompt:
         # todo: add support for custom prompts to /tldr
@@ -164,10 +161,11 @@ async def handler_topics_slash_command(
 
 
 @catch_errors_dm_user
-async def handler_tldr_since_slash_command(client: WebClient, ack, payload, say):
+async def handler_tldr_since_slash_command(slack_context: SlackContext, ack, payload, say):
     await ack()
+    client = slack_context.client
     title = "Choose your summary timeframe."
-    dm_channel_id = await get_direct_message_channel_id(client, payload["user_id"])
+    dm_channel_id = await slack_context.get_direct_message_channel_id(payload["user_id"])
 
     custom_prompt = payload.get("text", None)
 
@@ -207,11 +205,12 @@ async def handler_tldr_since_slash_command(client: WebClient, ack, payload, say)
 
 
 @catch_errors_dm_user
-async def handler_action_summarize_since_date(client: WebClient, ack, body):
+async def handler_action_summarize_since_date(slack_context: SlackContext, ack, body):
     """
     Provide a message summary of the channel since a given date.
     """
     await ack()
+    client = slack_context.client
     channel_name = body["channel"]["name"]
     channel_id = body["channel"]["id"]
     user_id = body["user"]["id"]
@@ -227,22 +226,22 @@ async def handler_action_summarize_since_date(client: WebClient, ack, body):
         since_date = body["actions"][0]["selected_date"]
         since_datetime: datetime = datetime.strptime(since_date, "%Y-%m-%d").date()
 
-    dm_channel_id = await get_direct_message_channel_id(client, user_id)
+    dm_channel_id = await slack_context.get_direct_message_channel_id(user_id)
     client.chat_postMessage(channel=dm_channel_id, text="...")
 
     async with ClientSession() as session:
         await session.post(body["response_url"], json={"delete_original": "true"})
 
-    history = await get_channel_history(client, channel_id, since=since_datetime)
+    history = await slack_context.get_channel_history(channel_id, since=since_datetime)
     history.reverse()
-    user = await get_user_context(client, user_id)
+    user = await slack_context.get_user_context(user_id)
     custom_prompt = None
     if "container" in body and "message_ts" in body["container"]:
         key = f"{body['container']['message_ts']}__{user_id}"
         custom_prompt = _custom_prompt_cache.get(key, None)
-    summarizer = Summarizer(custom_prompt=custom_prompt)
+    summarizer = Summarizer(slack_context, custom_prompt=custom_prompt)
     summary, run_id = summarizer.summarize_slack_messages(
-        client, history, channel_id, feature_name=feature_name, user=user
+        history, channel_id, feature_name=feature_name, user=user
     )
     text, blocks = get_text_and_blocks_for_say(
         title=f'*Summary of #{channel_name}* since {since_datetime.strftime("%A %b %-d, %Y")} ({len(history)} messages)\n',
@@ -257,15 +256,15 @@ async def handler_action_summarize_since_date(client: WebClient, ack, body):
 
 @catch_errors_dm_user
 async def handler_sandbox_slash_command(
-    client: WebClient, ack, payload, say, user_id: str
+    slack_context: SlackContext, ack, payload, say, user_id: str
 ):
     logger.debug(f"Handling /sandbox command")
     await ack()
+    client = slack_context.client
     channel_id = payload["channel_id"]
     custom_prompt = payload.get("text", None)
-    summarizer = Summarizer(custom_prompt=custom_prompt)
+    summarizer = Summarizer(slack_context, custom_prompt=custom_prompt)
     summary, run_id = summarizer.summarize_slack_messages(
-        client,
         [
             {"text": "bacon", "user": user_id},
             {"text": "eggs", "user": user_id},
