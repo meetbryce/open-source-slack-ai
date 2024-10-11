@@ -22,6 +22,7 @@ from ossai.utils import (
     get_since_timeframe_presets,
 )
 
+_custom_prompt_cache = {}
 
 def handler_feedback(body):
     """
@@ -102,7 +103,6 @@ async def handler_tldr_extended_slash_command(
     client: WebClient, ack, payload, say, user_id: str
 ):
     await ack()
-    text = payload.get("text", None)
     channel_name = payload["channel_name"]
     channel_id = payload["channel_id"]
     dm_channel_id = None
@@ -110,14 +110,12 @@ async def handler_tldr_extended_slash_command(
     dm_channel_id = await get_direct_message_channel_id(client, user_id)
     await say(channel=dm_channel_id, text="...")
 
-    if text:
-        return await say("ERROR: custom prompt support coming soon!")
-
     history = await get_channel_history(client, channel_id)
     history.reverse()
     user = await get_user_context(client, user_id)
     title = f"*Summary of #{channel_name}* (last {len(history)} messages)\n"
-    summarizer = Summarizer()
+    custom_prompt = payload.get("text", None)
+    summarizer = Summarizer(custom_prompt=custom_prompt)
     summary, run_id = summarizer.summarize_slack_messages(
         client,
         history,
@@ -126,7 +124,7 @@ async def handler_tldr_extended_slash_command(
         user=user,
     )
     text, blocks = get_text_and_blocks_for_say(
-        title=title, run_id=run_id, messages=summary
+        title=title, run_id=run_id, messages=summary, custom_prompt=custom_prompt
     )
     return await say(channel=dm_channel_id, text=text, blocks=blocks)
 
@@ -136,9 +134,6 @@ async def handler_topics_slash_command(
     client: WebClient, ack, payload, say, user_id: str
 ):
     await ack()
-    text = payload.get("text", None)
-    if text:
-        return await say("ERROR: custom prompt support coming soon!")
     channel_id = payload["channel_id"]
     dm_channel_id = await get_direct_message_channel_id(client, user_id)
     await say(channel=dm_channel_id, text="...")
@@ -149,6 +144,11 @@ async def handler_topics_slash_command(
     messages = get_parsed_messages(client, history, with_names=False)
     user = await get_user_context(client, user_id)
     is_private, channel_name = get_is_private_and_channel_name(client, channel_id)
+    custom_prompt = payload.get("text", None)
+    if custom_prompt:
+        # todo: add support for custom prompts to /tldr
+        await say(channel=dm_channel_id, text="Sorry, this command doesn't support custom prompts yet so I'm processing your request without it.")
+
     topic_overview, run_id = await analyze_topics_of_history(
         channel_name, messages, user=user, is_private=is_private
     )
@@ -164,11 +164,10 @@ async def handler_tldr_since_slash_command(client: WebClient, ack, payload, say)
     await ack()
     title = "Choose your summary timeframe."
     dm_channel_id = await get_direct_message_channel_id(client, payload["user_id"])
-    text = payload.get("text", None)
-    if text:
-        return await say("ERROR: custom prompt support coming soon!")
+    
+    custom_prompt = payload.get("text", None)
 
-    client.chat_postEphemeral(
+    result = client.chat_postEphemeral(
         channel=payload["channel_id"],
         user=payload["user_id"],
         text=title,
@@ -184,17 +183,23 @@ async def handler_tldr_since_slash_command(client: WebClient, ack, payload, say)
                             "text": "Select a date",
                             "emoji": True,
                         },
-                        "action_id": "summarize_since",
+                        "action_id": f"summarize_since",
                     },
                 ],
             }
         ],
     )
 
+    # get `custom_prompt` into handler_action_summarize_since_date()
+    key = f"{result['message_ts']}__{payload['user_id']}"
+    _custom_prompt_cache[key] = custom_prompt
+    logger.debug(f"Storing `custom_prompt` at {key}: {custom_prompt}")
+
     await say(
         channel=dm_channel_id,
         text=f'In #{payload["channel_name"]}, choose a date or timeframe to get your summary',
     )
+    return
 
 
 @catch_errors_dm_user
@@ -227,7 +232,11 @@ async def handler_action_summarize_since_date(client: WebClient, ack, body):
     history = await get_channel_history(client, channel_id, since=since_datetime)
     history.reverse()
     user = await get_user_context(client, user_id)
-    summarizer = Summarizer()
+    custom_prompt = None
+    if 'container' in body and 'message_ts' in body['container']:
+        key = f"{body['container']['message_ts']}__{user_id}"
+        custom_prompt = _custom_prompt_cache.get(key, None)
+    summarizer = Summarizer(custom_prompt=custom_prompt)
     summary, run_id = summarizer.summarize_slack_messages(
         client, history, channel_id, feature_name=feature_name, user=user
     )
@@ -235,6 +244,7 @@ async def handler_action_summarize_since_date(client: WebClient, ack, body):
         title=f'*Summary of #{channel_name}* since {since_datetime.strftime("%A %b %-d, %Y")} ({len(history)} messages)\n',
         run_id=run_id,
         messages=summary,
+        custom_prompt=custom_prompt,
     )
     # todo: somehow add date/preset choice to langsmith metadata
     #   feature_name: str -> feature: str || Tuple[str, List(Tuple[str, str])]
@@ -245,17 +255,26 @@ async def handler_action_summarize_since_date(client: WebClient, ack, body):
 async def handler_sandbox_slash_command(
     client: WebClient, ack, payload, say, user_id: str
 ):
-    text = payload.get("text", None)
-    if text:
-        return await say("ERROR: custom prompt support coming soon!")
     logger.debug(f"Handling /sandbox command")
     await ack()
-    run_id = str(uuid.uuid4())
-    run_id = None
-    text = """-- Better error handling coming soon! Useful summary of content goes here -- (no run id)"""
-    lines = text.strip().split("\n")
+    channel_id = payload["channel_id"]
+    custom_prompt = payload.get("text", None)
+    summarizer = Summarizer(custom_prompt=custom_prompt)
+    summary, run_id = summarizer.summarize_slack_messages(
+        client,
+        [
+            {"text": "bacon", "user": user_id},
+            {"text": "eggs", "user": user_id},
+            {"text": "spam", "user": user_id},
+            {"text": "orange juice", "user": user_id},
+            {"text": "coffee", "user": user_id},
+        ],
+        channel_id=channel_id,
+        feature_name="sandbox",
+        user=user_id,
+    )
     title = "This is a test of the /sandbox command."
     text, blocks = get_text_and_blocks_for_say(
-        title=title, run_id=run_id, messages=lines
+        title=title, run_id=run_id, messages=summary, custom_prompt=custom_prompt
     )
     return await say(text=text, blocks=blocks)

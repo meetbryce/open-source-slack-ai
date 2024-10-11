@@ -20,10 +20,12 @@ load_dotenv(override=True)
 
 
 class Summarizer:
-    def __init__(self):
+    def __init__(self, custom_prompt: str | None = None):
+        # todo: apply pydantic model
         self.config = get_llm_config()
         self.model = ChatOpenAI(model=self.config["chat_model"], temperature=self.config["temperature"])
         self.parser = StrOutputParser()
+        self.custom_prompt = custom_prompt
 
     def summarize(
         self,
@@ -62,18 +64,21 @@ class Summarizer:
         So, The assistant needs to speak in {language}.
         """
 
-        human_msg = """\
+        base_human_msg = """\
         Please summarize the following chat log to a flat markdown formatted bullet list.
         Do not write a line by line summary. Instead, summarize the overall conversation.
         Do not include greeting/salutation/polite expressions in summary.
         Make the summary easy to read while maintaining a conversational tone and retaining meaning.
         Write in conversational English.
+        {custom_instructions}
 
         {text}
         """
 
+        # todo: guard against prompt injection
+
         prompt_template = ChatPromptTemplate.from_messages(
-            [("system", system_msg), ("user", human_msg)]
+            [("system", system_msg), ("user", base_human_msg)]
         )
 
         chain = prompt_template | self.model | self.parser
@@ -87,7 +92,12 @@ class Summarizer:
         )
         logger.info(f"{langsmith_config=}")
         result = chain.invoke(
-            {"text": text, "language": self.config["language"]}, config=langsmith_config
+            {
+                "text": text,
+                "language": self.config["language"],
+                "custom_instructions": f"\n\nAdditionally, please follow these specific instructions for this summary:\n{self.custom_prompt}" if self.custom_prompt else "",
+            },
+            config=langsmith_config
         )
         return result, langsmith_config["run_id"]
 

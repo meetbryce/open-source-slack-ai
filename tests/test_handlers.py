@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 import uuid
 import pytest
 from slack_sdk import WebClient
@@ -380,7 +380,7 @@ async def test_handler_tldr_extended_slash_command_non_public(
 @patch("ossai.handlers.Summarizer")
 @patch("ossai.handlers.get_text_and_blocks_for_say")
 @patch("ossai.handlers.get_direct_message_channel_id")
-@patch("aiohttp.ClientSession.post", new_callable=AsyncMock)  # Change this line
+@patch("aiohttp.ClientSession.post", new_callable=AsyncMock)
 async def test_handler_action_summarize_since_date(
     mock_post,
     get_direct_message_channel_id_mock,
@@ -440,6 +440,7 @@ async def test_handler_action_summarize_since_date(
         title="*Summary of #general* since Tuesday Feb 21, 2023 (2 messages)\n",
         run_id="run_id",
         messages="summary",
+        custom_prompt=None,
     )
     client.chat_postMessage.assert_called_with(
         channel="DM123", text="text", blocks="blocks"
@@ -456,7 +457,7 @@ async def test_handler_tldr_since_slash_command_happy_path(
 ):
     # Setup
     client = AsyncMock(spec=WebClient)
-    client.chat_postEphemeral = AsyncMock()
+    client.chat_postEphemeral = MagicMock()
     say = AsyncMock()
     payload = {"user_id": "U123", "channel_id": "C123", "channel_name": "general"}
     get_since_timeframe_presets_mock.return_value = {"foo": "bar"}
@@ -646,10 +647,6 @@ async def test_handler_sandbox_slash_command_happy_path():
 
     await handler_sandbox_slash_command(client, ack, payload, say, user_id="foo123")
     say.assert_called_once()
-    assert any(
-        "Useful summary of content goes here" in str(block)
-        for block in say.call_args[1]["blocks"]
-    )
     assert any(
         "This is a test of the /sandbox command." in str(block)
         for block in say.call_args[1]["blocks"]

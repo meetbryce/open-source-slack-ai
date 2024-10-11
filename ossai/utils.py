@@ -203,7 +203,7 @@ def get_parsed_messages(client, messages, with_names=True):
 
 
 def get_text_and_blocks_for_say(
-    title: str, run_id: Union[uuid.UUID, None], messages: list
+    title: str, run_id: Union[uuid.UUID, None], messages: list, custom_prompt: str = None
 ) -> tuple[str, list]:
     CHAR_LIMIT = 3000
     text = "\n".join(messages)
@@ -259,6 +259,18 @@ def get_text_and_blocks_for_say(
                 ],
             }
         )
+
+    if custom_prompt:
+        blocks.append({
+            "type": "context",
+            "elements": [
+                {
+                    "type": "plain_text",
+                    "text": f"Custom Prompt: {custom_prompt}",
+                    "emoji": True
+                }
+            ]
+        })
 
     return text.split("\n")[0], blocks
 

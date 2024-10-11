@@ -7,6 +7,7 @@ from slack_sdk.errors import SlackApiError
 
 from ossai import utils
 
+
 @pytest.fixture
 def mock_client():
     with patch("ossai.utils.WebClient") as mock_client:
@@ -281,7 +282,7 @@ def test_get_since_timeframe_presets_values(mock_gmtime):
 def test_get_text_and_blocks_for_say_block_size():
     title = "Test Title"
     run_id = uuid.uuid4()
-    
+
     # Create a message that's longer than 3000 characters
     long_message = "A" * 4000
     messages = [long_message]
@@ -289,19 +290,21 @@ def test_get_text_and_blocks_for_say_block_size():
     _, blocks = utils.get_text_and_blocks_for_say(title, run_id, messages)
 
     # Check that the title is in the first block
-    assert blocks[0]['text']['text'] == title
+    assert blocks[0]["text"]["text"] == title
 
     # Check that each block's text is no longer than 3000 characters
     for block in blocks[1:-1]:  # Exclude the first (title) and last (buttons) blocks
-        assert len(block['text']['text']) <= 3000, f"Block text exceeds 3000 characters: {len(block['text']['text'])}"
+        assert (
+            len(block["text"]["text"]) <= 3000
+        ), f"Block text exceeds 3000 characters: {len(block['text']['text'])}"
 
     # Check that all of the original message is included
-    combined_text = ''.join(block['text']['text'] for block in blocks[1:-1])
+    combined_text = "".join(block["text"]["text"] for block in blocks[1:-1])
     assert combined_text == long_message
 
     # Check that the last block contains the buttons
-    assert blocks[-1]['type'] == 'actions'
-    assert len(blocks[-1]['elements']) == 3  # Three buttons
+    assert blocks[-1]["type"] == "actions"
+    assert len(blocks[-1]["elements"]) == 3  # Three buttons
 
 
 def test_main_as_script():
