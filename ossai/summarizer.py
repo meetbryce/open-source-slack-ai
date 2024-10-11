@@ -2,6 +2,7 @@ import os
 from uuid import UUID
 import re
 import openai
+from typing import Optional, List, Dict, Any
 
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
@@ -20,7 +21,7 @@ load_dotenv(override=True)
 
 
 class Summarizer:
-    def __init__(self, custom_prompt: str | None = None):
+    def __init__(self, custom_prompt: Optional[str] = None):
         # todo: apply pydantic model
         self.config = get_llm_config()
         self.model = ChatOpenAI(
