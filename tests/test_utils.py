@@ -8,6 +8,13 @@ from slack_sdk.errors import SlackApiError
 from ossai import utils
 
 
+@pytest.fixture(autouse=True)
+def clear_cache():
+    utils._id_name_cache.clear()
+    yield
+    utils._id_name_cache.clear()
+
+
 @pytest.fixture
 def mock_client():
     with patch("ossai.utils.WebClient") as mock_client:
