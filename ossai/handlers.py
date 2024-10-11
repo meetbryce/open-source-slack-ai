@@ -24,6 +24,7 @@ from ossai.utils import (
 
 _custom_prompt_cache = {}
 
+
 def handler_feedback(body):
     """
     Handler for the feedback buttons that passes the feedback to Langsmith.
@@ -147,7 +148,10 @@ async def handler_topics_slash_command(
     custom_prompt = payload.get("text", None)
     if custom_prompt:
         # todo: add support for custom prompts to /tldr
-        await say(channel=dm_channel_id, text="Sorry, this command doesn't support custom prompts yet so I'm processing your request without it.")
+        await say(
+            channel=dm_channel_id,
+            text="Sorry, this command doesn't support custom prompts yet so I'm processing your request without it.",
+        )
 
     topic_overview, run_id = await analyze_topics_of_history(
         channel_name, messages, user=user, is_private=is_private
@@ -164,7 +168,7 @@ async def handler_tldr_since_slash_command(client: WebClient, ack, payload, say)
     await ack()
     title = "Choose your summary timeframe."
     dm_channel_id = await get_direct_message_channel_id(client, payload["user_id"])
-    
+
     custom_prompt = payload.get("text", None)
 
     result = client.chat_postEphemeral(
@@ -233,7 +237,7 @@ async def handler_action_summarize_since_date(client: WebClient, ack, body):
     history.reverse()
     user = await get_user_context(client, user_id)
     custom_prompt = None
-    if 'container' in body and 'message_ts' in body['container']:
+    if "container" in body and "message_ts" in body["container"]:
         key = f"{body['container']['message_ts']}__{user_id}"
         custom_prompt = _custom_prompt_cache.get(key, None)
     summarizer = Summarizer(custom_prompt=custom_prompt)

@@ -23,7 +23,9 @@ class Summarizer:
     def __init__(self, custom_prompt: str | None = None):
         # todo: apply pydantic model
         self.config = get_llm_config()
-        self.model = ChatOpenAI(model=self.config["chat_model"], temperature=self.config["temperature"])
+        self.model = ChatOpenAI(
+            model=self.config["chat_model"], temperature=self.config["temperature"]
+        )
         self.parser = StrOutputParser()
         self.custom_prompt = custom_prompt
 
@@ -95,9 +97,13 @@ class Summarizer:
             {
                 "text": text,
                 "language": self.config["language"],
-                "custom_instructions": f"\n\nAdditionally, please follow these specific instructions for this summary:\n{self.custom_prompt}" if self.custom_prompt else "",
+                "custom_instructions": (
+                    f"\n\nAdditionally, please follow these specific instructions for this summary:\n{self.custom_prompt}"
+                    if self.custom_prompt
+                    else ""
+                ),
             },
-            config=langsmith_config
+            config=langsmith_config,
         )
         return result, langsmith_config["run_id"]
 
@@ -140,7 +146,9 @@ class Summarizer:
 
         return sum(map(counter, matches))
 
-    def split_messages_by_token_count(self, client, messages: list[dict]) -> list[list[str]]:
+    def split_messages_by_token_count(
+        self, client, messages: list[dict]
+    ) -> list[list[str]]:
         """
         Split a list of strings into sub lists with a maximum token count.
 

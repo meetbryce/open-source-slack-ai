@@ -86,7 +86,9 @@ def get_is_private_and_channel_name(
         channel_name = channel_info["channel"]["name"]
         is_private = channel_info["channel"]["is_private"]
     except Exception as e:
-        logger.error(f"Error getting channel info for is_private, defaulting to private: {e}")
+        logger.error(
+            f"Error getting channel info for is_private, defaulting to private: {e}"
+        )
         channel_name = "unknown"
         is_private = True
     return is_private, channel_name
@@ -203,7 +205,10 @@ def get_parsed_messages(client, messages, with_names=True):
 
 
 def get_text_and_blocks_for_say(
-    title: str, run_id: Union[uuid.UUID, None], messages: list, custom_prompt: str = None
+    title: str,
+    run_id: Union[uuid.UUID, None],
+    messages: list,
+    custom_prompt: str = None,
 ) -> tuple[str, list]:
     CHAR_LIMIT = 3000
     text = "\n".join(messages)
@@ -261,16 +266,18 @@ def get_text_and_blocks_for_say(
         )
 
     if custom_prompt:
-        blocks.append({
-            "type": "context",
-            "elements": [
-                {
-                    "type": "plain_text",
-                    "text": f"Custom Prompt: {custom_prompt}",
-                    "emoji": True
-                }
-            ]
-        })
+        blocks.append(
+            {
+                "type": "context",
+                "elements": [
+                    {
+                        "type": "plain_text",
+                        "text": f"Custom Prompt: {custom_prompt}",
+                        "emoji": True,
+                    }
+                ],
+            }
+        )
 
     return text.split("\n")[0], blocks
 
@@ -307,7 +314,9 @@ def get_workspace_name(client: WebClient):
         if response["ok"]:
             return response["team"]["name"]
         else:
-            logger.warning(f"Error retrieving workspace name: {response['error']}. Falling back to WORKSPACE_NAME_FALLBACK.")
+            logger.warning(
+                f"Error retrieving workspace name: {response['error']}. Falling back to WORKSPACE_NAME_FALLBACK."
+            )
             return os.getenv("WORKSPACE_NAME_FALLBACK", "")
     except SlackApiError as e:
         logger.error(f"Error retrieving workspace name: {e.response['error']}")
