@@ -2,7 +2,7 @@
 
 [![Test Coverage](https://api.codeclimate.com/v1/badges/49225ada2033154b15bf/test_coverage)](https://codeclimate.com/github/meetbryce/open-source-slack-ai/test_coverage) [![Maintainability](https://api.codeclimate.com/v1/badges/49225ada2033154b15bf/maintainability)](https://codeclimate.com/github/meetbryce/open-source-slack-ai/maintainability) ![GitHub License](https://img.shields.io/github/license/meetbryce/open-source-slack-ai) [![Static Badge](https://img.shields.io/badge/repo-analytics-violet?link=https%3A%2F%2Fmeetbryce.github.io%2Fopen-source-slack-ai--gh-stats%2Fmeetbryce%2Fopen-source-slack-ai%2Flatest-report%2Freport.html)](https://meetbryce.github.io/open-source-slack-ai--gh-stats/meetbryce/open-source-slack-ai/latest-report/report.html) [![contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](https://github.com/dwyl/esta/issues) ![X (formerly Twitter) Follow](https://img.shields.io/twitter/follow/meetbryce)
 
-[//]: # (todo: youtube badge linking to walkthrough video?)
+[//]: # "todo: youtube badge linking to walkthrough video?"
 
 This repository is a ready-to-run basic Slack AI solution you can host yourself and unlock the ability to summarize
 threads and channels on demand using OpenAI (support for alternative and open source LLMs will be added if there's
@@ -17,21 +17,21 @@ generate to both public and private:
 2. **Channel overviews** - Generate an outline of the channel's purpose based on the extended message history (powered
    by an ensemble of NLP models and a little GPT-4 to explain the analysis in natural language)
 3. **Channel summaries since** - Generate a detailed summary of a channel's messages since a given point in time (powered by
-   GPT-3.5-Turbo). Note: this doesn't include threads yet.
-4. **Full channel summaries** (beta) - Generate a detailed summary of a channel's extended history (powered by
-   GPT-3.5-Turbo). Note: this can get very long!
+   GPT-3.5-Turbo). Now with support for custom prompts! e.g. `/tldr_since anonymize the summary`. Note: this doesn't include threads yet.
+4. **Full channel summaries** (experimental) - Generate a detailed summary of a channel's extended history (powered by
+   GPT-3.5-Turbo). Now with support for custom prompts! e.g. `/tldr_extended anonymize the summary`. Note: this can get very long!
 
-[//]: # (todo: demo video/gif of the 2 main features)
+[//]: # "todo: demo video/gif of the 2 main features"
 
 <!-- omit in toc -->
 
 ## Table of Contents
 
 - [Getting Started](#getting-started)
-    - [Prerequisites](#prerequisites)
-    - [Installation](#installation)
-    - [Usage](#usage)
-    - [Customization](#customization)
+  - [Prerequisites](#prerequisites)
+  - [Installation](#installation)
+  - [Usage](#usage)
+  - [Customization](#customization)
 - [Testing](#testing)
 - [Future Enhancements](#future-enhancements)
 - [Contributing](#contributing)
@@ -80,20 +80,19 @@ cp example.env .env && open .env
 
 Make a copy of `manifest.json` and change the request URL to your ngrok or server URL.
 
-Create a new Slack app [here](https://api.slack.com/apps?new_app=1) and configure it using your `manifest.yaml` 
-file. 
+Create a new Slack app [here](https://api.slack.com/apps?new_app=1) and configure it using your `manifest.yaml`
+file.
 
-You shouldn't need to make any other changes but you can change the name, description, and other 
+You shouldn't need to make any other changes but you can change the name, description, and other
 copy related settings.
 
 If you wish to adjust the name of the slash commands, you'll need to modify `slack_server.py`.
 
-Once configured, retrieve the "Bot User OAuth Token" from the "Install App" page and add it to your `.env` 
+Once configured, retrieve the "Bot User OAuth Token" from the "Install App" page and add it to your `.env`
 file as `SLACK_BOT_TOKEN`.
 
 Then, on the Basic Information page under the App-Level Tokens heading create a token with the scop `connections:write`
 and add it to your `.env` file as `SLACK_APP_TOKEN`.
-
 
 ### Usage
 
@@ -103,7 +102,7 @@ To run the application, run the FastAPI server:
 poetry run uvicorn ossai.slack_server:app --reload
 ```
 
-[//]: # (todo: improve the ngrok instructions)
+[//]: # "todo: improve the ngrok instructions"
 
 You'll then need to expose the server to the internet using ngrok.
 
@@ -111,13 +110,14 @@ Run ngrok with the following command: `ngrok http 8000`
 
 Then add the ngrok URL to your Slack app's settings.
 
-[//]: # (todo: running ngrok and configuration of the Slack App)
+[//]: # "todo: running ngrok and configuration of the Slack App"
 
 ### Customization
 
 The main customization options are:
-* Channel Summary: customize the ChatGPT prompt in `topic_analysis.py`
-* Thread Summary: customize the ChatGPT prompt in `summarizer.py`
+
+- Channel Summary: customize the ChatGPT prompt in `topic_analysis.py`
+- Thread Summary: customize the ChatGPT prompt in `summarizer.py`
 
 ## Testing
 
@@ -128,9 +128,9 @@ Follow these steps to run the tests with coverage:
 1. Navigate to the project root directory.
 2. Run the following command to execute the tests with coverage:
 
-    ```bash
-    pytest --cov=ossai tests/
-    ```
+   ```bash
+   pytest --cov=ossai tests/
+   ```
 
    This command will run all the tests in the `tests/` directory and generate a coverage report for the `ossai`
    module.
