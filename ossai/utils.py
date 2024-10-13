@@ -5,7 +5,7 @@ import calendar
 from typing import Union
 
 from dotenv import load_dotenv
-from langchain.callbacks.tracers import LangChainTracer
+from langchain_core.tracers import LangChainTracer
 
 from ossai.logging_config import logger
 
