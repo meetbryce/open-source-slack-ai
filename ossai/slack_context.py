@@ -31,9 +31,10 @@ class SlackContext:
         self,
         channel_id: str,
         since: date = None,
+        since_ts: str = None,
         include_threads: bool = False,
     ) -> list:
-        oldest_timestamp = mktime(since.timetuple()) if since else 0
+        oldest_timestamp = since_ts if since_ts else (mktime(since.timetuple()) if since else 0)
         response = self.client.conversations_history(
             channel=channel_id, limit=1000, oldest=oldest_timestamp
         )

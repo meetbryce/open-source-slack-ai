@@ -260,40 +260,15 @@ async def handler_sandbox_slash_command(
 ):
     logger.debug(f"Handling /sandbox command")
     await ack()
-    # client = slack_context.client
-    # channel_id = payload["channel_id"]
-    # custom_prompt = payload.get("text", None)
-    # summarizer = Summarizer(slack_context, custom_prompt=custom_prompt)
-    # summary, run_id = summarizer.summarize_slack_messages(
-    #     [
-    #         {"text": "bacon", "user": user_id},
-    #         {"text": "eggs", "user": user_id}, 
-    #         {"text": "spam", "user": user_id},
-    #         {"text": "orange juice", "user": user_id},
-    #         {"text": "coffee", "user": user_id},
-    #     ],
-    #     channel_id=channel_id,
-    #     feature_name="sandbox",
-    #     user=user_id,
-    # )
-    # title = "This is a test of the /sandbox command."
-    # text, blocks = get_text_and_blocks_for_say(
-    #     title=title, run_id=run_id, messages=summary, custom_prompt=custom_prompt
-    # )
+    
+    import json
+    import os
+    from pathlib import Path
 
     client = slack_context.client
     channel_id = payload["channel_id"]
     channel_name = payload["channel_name"]
     
-    # Get oldest message from channel
-    history = await slack_context.get_channel_history(channel_id)
-    history.reverse()
-    messages = slack_context.get_rich_parsed_messages(history)
-    # Persist messages to jsonl file
-    import json
-    import os
-    from pathlib import Path
-
     # Create data/history directory if it doesn't exist
     history_dir = Path("data/history")
     history_dir.mkdir(parents=True, exist_ok=True)
@@ -301,15 +276,43 @@ async def handler_sandbox_slash_command(
     # Write messages to channel-specific jsonl file
     # FIXME: this just appends to the file, it doesn't overwrite it
     history_file = history_dir / f"{channel_name}.jsonl"
+    
+    # Get latest timestamp and total message count from existing file
+    latest_ts = 0
+    total_messages = 0
+    if history_file.exists():
+        with open(history_file, "r") as f:
+            for line in f:
+                msg = json.loads(line)
+                latest_ts = max(latest_ts, float(msg["ts"]))
+                total_messages += 1
+
+    # Get oldest message from channel
+    history = await slack_context.get_channel_history(channel_id, since_ts=latest_ts)
+    history.reverse()
+    messages = slack_context.get_rich_parsed_messages(history)
+    
+    # Only write messages newer than latest_ts
+    new_messages = 0
     with open(history_file, "a") as f:
         for message in messages:
-            json.dump(message, f)
-            f.write("\n")
-    
+            if float(message["ts"]) > latest_ts:
+                json.dump(message, f)
+                f.write("\n")
+                new_messages += 1
 
-    oldest_message = messages[0]
-    
-    text = f"#{channel_name}\n> {oldest_message}\n"
+    dm_channel_id = await slack_context.get_direct_message_channel_id(user_id)
+
+    # Upload file to Slack
+    upload_response = client.files_upload_v2(
+        channel=dm_channel_id,
+        file=str(history_file),
+        title=f"{channel_name} Message History",
+        filename=f"{channel_name}_history.jsonl"
+    )
+    file_url = upload_response["file"]["permalink"]
+
+    text = f"Saved {new_messages} new messages to #{channel_name} history (total: {total_messages + new_messages} messages archived)"
     blocks = [
         {
             "type": "section",
@@ -317,6 +320,20 @@ async def handler_sandbox_slash_command(
                 "type": "mrkdwn",
                 "text": text
             }
+        },
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": f"Download the full history <{file_url}|here>"
+            }
         }
     ]
-    return await say(text=text, blocks=blocks)
+    return client.chat_postEphemeral(
+        channel=channel_id,
+        user=user_id,
+        text=text,
+        blocks=blocks
+    )
+    # TODO: this should be its own command e.g. /tldr_history
+    # TODO: ideally this becomes a scheduled job that automatically runs periodically
