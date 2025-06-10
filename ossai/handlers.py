@@ -260,24 +260,45 @@ async def handler_sandbox_slash_command(
 ):
     logger.debug(f"Handling /sandbox command")
     await ack()
+    # client = slack_context.client
+    # channel_id = payload["channel_id"]
+    # custom_prompt = payload.get("text", None)
+    # summarizer = Summarizer(slack_context, custom_prompt=custom_prompt)
+    # summary, run_id = summarizer.summarize_slack_messages(
+    #     [
+    #         {"text": "bacon", "user": user_id},
+    #         {"text": "eggs", "user": user_id}, 
+    #         {"text": "spam", "user": user_id},
+    #         {"text": "orange juice", "user": user_id},
+    #         {"text": "coffee", "user": user_id},
+    #     ],
+    #     channel_id=channel_id,
+    #     feature_name="sandbox",
+    #     user=user_id,
+    # )
+    # title = "This is a test of the /sandbox command."
+    # text, blocks = get_text_and_blocks_for_say(
+    #     title=title, run_id=run_id, messages=summary, custom_prompt=custom_prompt
+    # )
+
     client = slack_context.client
     channel_id = payload["channel_id"]
-    custom_prompt = payload.get("text", None)
-    summarizer = Summarizer(slack_context, custom_prompt=custom_prompt)
-    summary, run_id = summarizer.summarize_slack_messages(
-        [
-            {"text": "bacon", "user": user_id},
-            {"text": "eggs", "user": user_id},
-            {"text": "spam", "user": user_id},
-            {"text": "orange juice", "user": user_id},
-            {"text": "coffee", "user": user_id},
-        ],
-        channel_id=channel_id,
-        feature_name="sandbox",
-        user=user_id,
-    )
-    title = "This is a test of the /sandbox command."
-    text, blocks = get_text_and_blocks_for_say(
-        title=title, run_id=run_id, messages=summary, custom_prompt=custom_prompt
-    )
+    channel_name = payload["channel_name"]
+    
+    # Get oldest message from channel
+    history = await slack_context.get_channel_history(channel_id)
+    history.reverse()
+    messages = slack_context.get_parsed_messages(history, with_names=True, with_internal_external=True)
+    oldest_message = messages[0]
+    
+    text = f"#{channel_name}\n> {oldest_message}\n"
+    blocks = [
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": text
+            }
+        }
+    ]
     return await say(text=text, blocks=blocks)

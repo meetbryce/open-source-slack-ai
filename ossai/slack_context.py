@@ -60,7 +60,10 @@ class SlackContext:
             is_private = True
         return is_private, channel_name
 
-    def get_name_from_id(self, user_or_bot_id: str, is_bot=False) -> str:
+    def get_name_from_id(self, user_or_bot_id: str, is_bot=False) -> tuple[str, bool]:
+        """
+        Returns a tuple of (name, is_internal)
+        """
         if user_or_bot_id in self._id_name_cache:
             return self._id_name_cache[user_or_bot_id]
 
@@ -70,8 +73,9 @@ class SlackContext:
                 name = user_response["user"].get(
                     "real_name", user_response["user"]["profile"]["real_name"]
                 )
-                self._id_name_cache[user_or_bot_id] = name
-                return name
+                is_internal = not user_response["user"].get("is_restricted", True)  # if is_restricted is not present, infers is_restricted=True
+                self._id_name_cache[user_or_bot_id] = (name, is_internal)
+                return name, is_internal
             else:
                 logger.error("user fetch failed")
                 raise SlackApiError("user fetch failed", user_response)
@@ -80,8 +84,10 @@ class SlackContext:
                 try:
                     bot_response = self.client.bots_info(bot=user_or_bot_id)
                     if bot_response.get("ok"):
-                        self._id_name_cache[user_or_bot_id] = bot_response["bot"]["name"]
-                        return bot_response["bot"]["name"]
+                        name = bot_response["bot"]["name"]
+                        is_internal = True  # Bots are considered internal
+                        self._id_name_cache[user_or_bot_id] = (name, is_internal)
+                        return name, is_internal
                     else:
                         logger.error("bot fetch failed")
                         raise SlackApiError("bot fetch failed", bot_response)
@@ -91,27 +97,33 @@ class SlackContext:
                     )
             logger.error(f"Error fetching name for {user_or_bot_id=} {is_bot=} {e=}")
 
-        return "Someone"
+        return "Someone", True  # Default to internal for unknown users
 
-    def get_parsed_messages(self, messages, with_names=True):
+    def get_parsed_messages(self, messages, with_names=True, with_internal_external=False):
+        
         def parse_message(msg):
             user_id = msg.get("user")
             if user_id is None:
                 bot_id = msg.get("bot_id")
-                name = self.get_name_from_id(bot_id, is_bot=True)
+                name, is_internal = self.get_name_from_id(bot_id, is_bot=True)
             else:
-                name = self.get_name_from_id(user_id)
+                name, is_internal = self.get_name_from_id(user_id)
 
             parsed_message = re.sub(
                 r"<@[UB]\w+>",
-                lambda m: self.get_name_from_id(m.group(0)[2:-1]),
+                lambda m: self.get_name_from_id(m.group(0)[2:-1])[0],
                 msg["text"],
             )
 
             if not with_names:
                 return re.sub(r"<@[UB]\w+>", lambda m: "", msg["text"])
 
-            return f"{name}: {parsed_message}"
+            prefix = name
+            if with_internal_external:
+                status = "[internal]" if is_internal else "[external]"
+                prefix = f"{name} {status}"
+
+            return f"{prefix}: {parsed_message}"
 
         return [parse_message(message) for message in messages]
 
