@@ -111,3 +111,4 @@ cython_debug/
 .vscode
 .cursorrules
 .python-version
+data
