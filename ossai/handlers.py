@@ -289,6 +289,22 @@ async def handler_sandbox_slash_command(
     history = await slack_context.get_channel_history(channel_id)
     history.reverse()
     messages = slack_context.get_parsed_messages(history, with_names=True, with_internal_external=True)
+    # Persist messages to jsonl file
+    import json
+    import os
+    from pathlib import Path
+
+    # Create data/history directory if it doesn't exist
+    history_dir = Path("data/history")
+    history_dir.mkdir(parents=True, exist_ok=True)
+
+    # Write messages to channel-specific jsonl file
+    history_file = history_dir / f"{channel_name}.jsonl"
+    with open(history_file, "a") as f:
+        for message in messages:
+            json.dump({"message": message}, f)
+            f.write("\n")
+    
     oldest_message = messages[0]
     
     text = f"#{channel_name}\n> {oldest_message}\n"
