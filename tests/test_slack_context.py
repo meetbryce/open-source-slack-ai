@@ -73,7 +73,7 @@ async def test_get_direct_message_channel_id_with_exception(slack_context):
 
 
 def test_get_name_from_id(slack_context):
-    assert slack_context.get_name_from_id("U123") == "Ashley Wang"
+    assert slack_context.get_name_from_id("U123")[0] == "Ashley Wang"
 
 
 def test_get_name_from_id_bot_user(slack_context):
@@ -86,7 +86,7 @@ def test_get_name_from_id_bot_user(slack_context):
         "bot": {"name": "Bender Bending Rodríguez"},
     }
 
-    assert slack_context.get_name_from_id("B123") == "Bender Bending Rodríguez"
+    assert slack_context.get_name_from_id("B123")[0] == "Bender Bending Rodríguez"
 
 
 
@@ -100,7 +100,7 @@ def test_get_name_from_id_bot_user_error(slack_context):
         "error": "bot_not_found",
     }
 
-    assert slack_context.get_name_from_id("B456") == "Someone"
+    assert slack_context.get_name_from_id("B456")[0] == "Someone"
 
 
 def test_get_name_from_id_bot_user_exception(slack_context):
@@ -112,7 +112,7 @@ def test_get_name_from_id_bot_user_exception(slack_context):
         "bot fetch failed", {"error": "bot_not_found"}
     )
 
-    assert slack_context.get_name_from_id("B456") == "Someone"
+    assert slack_context.get_name_from_id("B456")[0] == "Someone"
 
 
 def test_get_parsed_messages(slack_context):
