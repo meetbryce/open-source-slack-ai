@@ -2,6 +2,7 @@ import os
 import re
 from time import mktime
 from datetime import date
+from typing import List
 
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
@@ -126,6 +127,29 @@ class SlackContext:
             return f"{prefix}: {parsed_message}"
 
         return [parse_message(message) for message in messages]
+    
+    def get_rich_parsed_messages(self, messages) -> List[dict]:
+        def parse_message(msg):
+            user_id = msg.get("user")
+            if user_id is None:
+                bot_id = msg.get("bot_id")
+                name, is_internal = self.get_name_from_id(bot_id, is_bot=True)
+            else:
+                name, is_internal = self.get_name_from_id(user_id)
+
+            rich_msg = msg.copy()
+            rich_msg["author"] = name
+            rich_msg["is_internal"] = is_internal
+            rich_msg["timestamp"] = msg["ts"].split(".")[0]
+            rich_msg["text"] = re.sub(
+                r"<@[UB]\w+>",
+                lambda m: self.get_name_from_id(m.group(0)[2:-1])[0],
+                msg["text"],
+            )  # replace mentions with names
+            return rich_msg
+        
+        return [parse_message(message) for message in messages]
+
 
     async def get_user_context(self, user_id: str) -> dict:
         try:
