@@ -623,8 +623,5 @@ async def test_handler_sandbox_slash_command_happy_path(mock_slack_context):
     payload = {"user_id": "U123", "channel_id": "C123", "channel_name": "general"}
 
     await handler_sandbox_slash_command(mock_slack_context, ack, payload, say, user_id="foo123")
-    say.assert_called_once()
-    assert any(
-        "This is a test of the /sandbox command." in str(block)
-        for block in say.call_args[1]["blocks"]
-    )
+    ack.assert_called_once()
+    mock_slack_context.client.chat_postEphemeral.assert_called_once()
