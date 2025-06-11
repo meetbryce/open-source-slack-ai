@@ -49,6 +49,7 @@ oauth_config:
       - groups:read
       - im:read
       - mpim:read
+      - files:write
 settings:
   event_subscriptions:
     request_url: https://YOURDOMAIN.COM/slack/events
