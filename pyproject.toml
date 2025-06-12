@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "open-source-slack-ai"
-version = "0.6.0"
+version = "0.7.0"
 description = "An open source alternative to some of Slack AI's premium features. Summarize channels and threads any time you want."
 authors = ["Bryce York <bryce@bryceyork.com>"]
 readme = "README.md"
