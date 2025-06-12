@@ -253,10 +253,10 @@ async def handler_action_summarize_since_date(slack_context: SlackContext, ack, 
 
 
 @catch_errors_dm_user
-async def handler_sandbox_slash_command(
+async def handler_tldr_archive_slash_command_experimental(
     slack_context: SlackContext, ack, payload, say, user_id: str
 ):
-    logger.debug(f"Handling /sandbox command")
+    logger.debug(f"Handling /tldr_archive command")
     await ack()
     
     import json
@@ -336,3 +336,17 @@ async def handler_sandbox_slash_command(
     )
     # TODO: this should be its own command e.g. /tldr_history
     # TODO: ideally this becomes a scheduled job that automatically runs periodically
+
+
+@catch_errors_dm_user
+async def handler_sandbox_slash_command(slack_context: SlackContext, ack, payload, say, user_id: str):
+    await ack()
+    client = slack_context.client
+    channel_id = payload["channel_id"]
+    channel_name = payload["channel_name"]
+    
+    return client.chat_postEphemeral(
+        channel=channel_id,
+        user=user_id,
+        text=f"This is a test of the /sandbox command running in #{channel_name}.",
+    )
