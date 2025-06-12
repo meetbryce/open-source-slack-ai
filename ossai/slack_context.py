@@ -129,8 +129,25 @@ class SlackContext:
 
         return [parse_message(message) for message in messages]
     
-    def get_rich_parsed_messages(self, messages) -> List[dict]:
-        def parse_message(msg):
+    def get_rich_parsed_messages(self, messages, channel_id=None, include_threads=False) -> List[dict]:
+        def parse_message(msg, is_reply=False):
+            if include_threads and not channel_id:
+                raise ValueError("channel_id is required if include_threads is True")
+            
+            # If include_threads and this message starts a thread, fetch and parse replies
+            # TODO: port this to other channel analysis features & functions
+            if include_threads and msg.get("thread_ts") and not is_reply:
+                try:
+                    logger.debug(f"Fetching thread replies for ts={msg['thread_ts']}")
+                    response = self.client.conversations_replies(channel=channel_id, ts=msg["thread_ts"])
+                    if response.get("ok"):
+                        thread_messages = response["messages"][1:]  # skip the parent message
+                        msg["reply_messages"] = [parse_message(thread_msg, is_reply=True) for thread_msg in thread_messages]
+                    else:
+                        logger.error(f"Failed to fetch thread replies: {response}")
+                except SlackApiError as e:
+                    logger.error(f"Error fetching thread replies for ts={msg['thread_ts']}: {e.response['error']}")
+
             user_id = msg.get("user")
             if user_id is None:
                 bot_id = msg.get("bot_id")
