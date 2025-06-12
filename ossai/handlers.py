@@ -276,7 +276,8 @@ async def handler_sandbox_slash_command(
     history_file = history_dir / f"{channel_name}.jsonl"
     
     # Get latest timestamp and total message count from existing file
-    latest_ts = 0
+    # FIXME: this only gets the oldest message up to a limit of 1000 messages
+    latest_ts = 0  # FIXME: this doesn't reset if the save fails
     total_messages = 0
     if history_file.exists():
         with open(history_file, "r") as f:
@@ -285,10 +286,10 @@ async def handler_sandbox_slash_command(
                 latest_ts = max(latest_ts, float(msg["ts"]))
                 total_messages += 1
 
-    # Get oldest message from channel
+    # Get and parse the messages from the channel
     history = await slack_context.get_channel_history(channel_id, since_ts=latest_ts)
     history.reverse()
-    messages = slack_context.get_rich_parsed_messages(history)
+    messages = slack_context.get_rich_parsed_messages(history, channel_id=channel_id, include_threads=True)
     
     # Only write messages newer than latest_ts
     new_messages = 0
