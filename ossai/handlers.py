@@ -19,8 +19,6 @@ from ossai.slack_context import SlackContext
 
 _custom_prompt_cache = {}
 
-# FIXME: basically, i need to have all handlers take `slack_context` not `client`
-
 def handler_feedback(body):
     """
     Handler for the feedback buttons that passes the feedback to Langsmith.
