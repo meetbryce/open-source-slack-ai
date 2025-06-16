@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from slack_bolt.adapter.socket_mode.aiohttp import AsyncSocketModeHandler
 from slack_bolt.async_app import AsyncApp
 from slack_sdk import WebClient
+from slack_sdk.http_retry.builtin_handlers import RateLimitErrorRetryHandler
 from ossai.slack_context import SlackContext
 
 load_dotenv(override=True)
@@ -26,6 +27,7 @@ from ossai.handlers import (
 app = FastAPI()
 async_app = AsyncApp(token=os.environ["SLACK_BOT_TOKEN"])
 client = WebClient(token=os.environ["SLACK_BOT_TOKEN"])
+client.retry_handlers.append(RateLimitErrorRetryHandler(max_retry_count=3))
 socket_handler = None
 
 
