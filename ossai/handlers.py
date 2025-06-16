@@ -1,10 +1,9 @@
 import os
-import uuid
+import json
+from pathlib import Path
 
 from aiohttp import ClientSession
 from datetime import datetime
-from slack_sdk import WebClient
-from slack_sdk.errors import SlackApiError
 from langsmith import Client
 
 from ossai.decorators.catch_error_dm_user import catch_errors_dm_user
@@ -259,10 +258,6 @@ async def handler_tldr_archive_slash_command_experimental(
     logger.debug(f"Handling /tldr_archive command")
     await ack()
     
-    import json
-    import os
-    from pathlib import Path
-
     client = slack_context.client
     channel_id = payload["channel_id"]
     channel_name = payload["channel_name"]
