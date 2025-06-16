@@ -272,7 +272,6 @@ async def handler_tldr_archive_slash_command_experimental(
     history_dir.mkdir(parents=True, exist_ok=True)
 
     # Write messages to channel-specific jsonl file
-    # FIXME: this just appends to the file, it doesn't overwrite it
     history_file = history_dir / f"{channel_name}.jsonl"
     
     # Get latest timestamp and total message count from existing file
@@ -334,7 +333,6 @@ async def handler_tldr_archive_slash_command_experimental(
         text=text,
         blocks=blocks
     )
-    # TODO: this should be its own command e.g. /tldr_history
     # TODO: ideally this becomes a scheduled job that automatically runs periodically
 
 
