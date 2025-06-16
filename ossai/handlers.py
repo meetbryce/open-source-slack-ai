@@ -283,6 +283,11 @@ async def handler_tldr_archive_slash_command_experimental(
     # Get and parse the messages from the channel
     history = await slack_context.get_channel_history(channel_id, since_ts=latest_ts)
     history.reverse()
+    client.chat_postEphemeral(
+        channel=channel_id,
+        user=user_id,
+        text=f"Fetching {len(history)} messages and any replies from #{channel_name}...",
+    )
     messages = slack_context.get_rich_parsed_messages(history, channel_id=channel_id, include_threads=True)
     
     # Only write messages newer than latest_ts
