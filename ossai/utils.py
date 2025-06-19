@@ -43,7 +43,7 @@ def get_langsmith_config(feature_name: str, user: dict, channel: str, is_private
     }
 
 def get_llm_config():
-    chat_model = os.getenv("CHAT_MODEL", "gpt-3.5-turbo").strip()
+    chat_model = os.getenv("CHAT_MODEL", "gpt-4.1").strip()
     temperature = float(os.getenv("TEMPERATURE", 0.2))
     openai_api_key = os.getenv("OPENAI_API_KEY", "").strip()
     debug = bool(os.environ.get("DEBUG", False))
