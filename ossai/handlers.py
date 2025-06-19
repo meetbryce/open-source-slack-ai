@@ -272,6 +272,7 @@ async def handler_tldr_archive_slash_command_experimental(
     # Get latest timestamp and total message count from existing file
     # FIXME: this only gets the oldest message up to a limit of 1000 messages
     # FIXME: this won't fetch new replies to messages that were already fetched
+    # TODO: don't just brute force this, its not efficient
     latest_ts = 0  # FIXME: this doesn't reset if the save fails
     total_messages = 0
     if history_file.exists():
