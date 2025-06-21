@@ -8,6 +8,7 @@ from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 
 from ossai.logging_config import logger
+from ossai.sentiment import get_traditional_sentiment
 
 class SlackContext:
     def __init__(self, client: WebClient):
@@ -164,6 +165,10 @@ class SlackContext:
                 lambda m: self.get_name_from_id(m.group(0)[2:-1])[0],
                 msg["text"],
             )  # replace mentions with names
+
+            # TODO: calculate trad_sentiment from sentiment.py (which uses nltk vader) and add to rich_msg
+            rich_msg["trad_sentiment"] = get_traditional_sentiment(msg["text"])
+
             return rich_msg
         
         return [parse_message(message) for message in messages]
