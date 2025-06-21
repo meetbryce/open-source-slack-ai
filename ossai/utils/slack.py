@@ -1,65 +1,8 @@
-import os
+import calendar
 import uuid
 from time import gmtime, strptime
-import calendar
 from typing import Union
 
-from dotenv import load_dotenv
-from langchain_core.tracers import LangChainTracer
-
-from ossai.logging_config import logger
-
-load_dotenv(override=True)
-
-class CustomLangChainTracer(LangChainTracer):
-    def __init__(self, is_private=False, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.is_private = is_private
-
-    def handleText(self, text, runId):
-        if not self.is_private:
-            logger.info("passing text")
-            super().handleText(text, runId)
-        else:
-            logger.info("passing no text")
-            super().handleText("", runId)
-
-def get_langsmith_config(feature_name: str, user: dict, channel: str, is_private=False):
-    run_id = str(uuid.uuid4())
-    tracer = CustomLangChainTracer(
-        is_private=is_private
-    )  # FIXME: this doesn't add privacy like it should
-
-    return {
-        "run_id": run_id,
-        "metadata": {
-            "is_private": is_private,
-            **({"user_name": user.get("name")} if "name" in user else {}),
-            **({"user_title": user.get("title")} if "title" in user else {}),
-            "channel": channel,
-        },
-        "tags": [feature_name],
-        "callbacks": [tracer],
-    }
-
-def get_llm_config():
-    chat_model = os.getenv("CHAT_MODEL", "gpt-4.1").strip()
-    temperature = float(os.getenv("TEMPERATURE", 0.2))
-    openai_api_key = os.getenv("OPENAI_API_KEY", "").strip()
-    debug = bool(os.environ.get("DEBUG", False))
-    max_body_tokens = int(os.getenv("MAX_BODY_TOKENS", 1000))
-    language = os.getenv("LANGUAGE", "english")
-
-    if not openai_api_key:
-        raise ValueError("OPENAI_API_KEY is not set in .env file")
-    return {
-        "chat_model": chat_model,
-        "temperature": temperature,
-        "OPENAI_API_KEY": openai_api_key,
-        "debug": debug,
-        "max_body_tokens": max_body_tokens,
-        "language": language,
-    }
 
 def get_text_and_blocks_for_say(
     title: str,
@@ -138,6 +81,7 @@ def get_text_and_blocks_for_say(
 
     return text.split("\n")[0], blocks
 
+
 def get_since_timeframe_presets():
     DAY_OF_SECONDS = 86400
     now = gmtime()
@@ -185,10 +129,4 @@ def get_since_timeframe_presets():
             }
             for (text, value) in options
         ],
-    }
-
-def main():
-    logger.error("DEBUGGING")
-
-if __name__ == "__main__":
-    main()
+    } 

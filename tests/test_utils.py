@@ -37,18 +37,6 @@ def mock_client():
     #     yield mock_client
 
 
-def test_main_as_script(capfd):
-    # Run the utils module as a script
-    with patch.dict("os.environ", {"SLACK_BOT_TOKEN": "test_token"}):
-        runpy.run_module("ossai.utils", run_name="__main__")
-
-    # Get the output from stdout and stderr
-    out, err = capfd.readouterr()
-
-    assert err == ""
-    assert "DEBUGGING" in out
-
-
 def test_get_langsmith_config_happy_path():
     feature_name = "feature_test"
     user = {"name": "testuser", "title": "developer"}
@@ -94,7 +82,7 @@ async def _test_get_user_context_success(mock_client):
 # todo: test get_text_and_blocks_for_say()
 
 
-@patch("ossai.utils.gmtime")
+@patch("ossai.utils.slack.gmtime")
 def test_get_since_timeframe_presets_structure(mock_gmtime):
     # Mock the current time to a fixed timestamp
     fixed_time = 1718825962  # This corresponds to 2024-06-19 19:39:22 UTC
@@ -109,7 +97,7 @@ def test_get_since_timeframe_presets_structure(mock_gmtime):
     assert len(options) == 7  # Expecting 7 time frame options
 
 
-@patch("ossai.utils.gmtime")
+@patch("ossai.utils.slack.gmtime")
 def test_get_since_timeframe_presets_values(mock_gmtime):
     fixed_time = 1718825962  # This corresponds to 2024-06-19 19:39:22 UTC
     mock_gmtime.return_value = time.gmtime(fixed_time)
@@ -163,7 +151,3 @@ def test_get_text_and_blocks_for_say_block_size():
     # Check that the last block contains the buttons
     assert blocks[-1]["type"] == "actions"
     assert len(blocks[-1]["elements"]) == 3  # Three buttons
-
-
-def test_main_as_script():
-    utils.main()
