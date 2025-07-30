@@ -1,8 +1,8 @@
 # The Open-Source Slack AI App
 
-![Total Clones Badge](https://img.shields.io/badge/dynamic/regex?url=https%3A%2F%2Fmeetbryce.github.io%2Fopen-source-slack-ai--gh-stats%2Fmeetbryce%2Fopen-source-slack-ai%2Flatest-report%2Freport.html&search=Cumulative%3A%20(%5Cd%2B)&replace=%241&logo=github&label=Total%20Clones&color=violet&link=https%3A%2F%2Fmeetbryce.github.io%2Fopen-source-slack-ai--gh-stats%2Fmeetbryce%2Fopen-source-slack-ai%2Flatest-report%2Freport.html) ![GitHub License](https://img.shields.io/github/license/meetbryce/open-source-slack-ai)
+![Total Clones Badge](https://img.shields.io/badge/dynamic/regex?url=https%3A%2F%2Fmeetbryce.github.io%2Fopen-source-slack-ai--gh-stats%2Fmeetbryce%2Fopen-source-slack-ai%2Flatest-report%2Freport.html&search=Cumulative%3A%20(%5Cd%2B)&replace=%241&logo=github&label=Total%20Clones&color=violet&link=https%3A%2F%2Fmeetbryce.github.io%2Fopen-source-slack-ai--gh-stats%2Fmeetbryce%2Fopen-source-slack-ai%2Flatest-report%2Freport.html) [![Static Badge](https://img.shields.io/badge/repo-analytics-violet?link=https%3A%2F%2Fmeetbryce.github.io%2Fopen-source-slack-ai--gh-stats%2Fmeetbryce%2Fopen-source-slack-ai%2Flatest-report%2Freport.html)](https://meetbryce.github.io/open-source-slack-ai--gh-stats/meetbryce/open-source-slack-ai/latest-report/report.html) [![Maintainability](https://qlty.sh/gh/meetbryce/projects/open-source-slack-ai/maintainability.svg)](https://qlty.sh/gh/meetbryce/projects/open-source-slack-ai) ![GitHub License](https://img.shields.io/github/license/meetbryce/open-source-slack-ai)
  [![contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](https://github.com/dwyl/esta/issues) ![X (formerly Twitter) Follow](https://img.shields.io/twitter/follow/meetbryce)
-
+<!-- TODO: bring back code coverage with qlty -->
 [//]: # "todo: youtube badge linking to walkthrough video?"
 
 This repository is a ready-to-run basic Slack AI solution you can host yourself and unlock the ability to summarize
