@@ -43,9 +43,10 @@ jobs:
       - name: Test with pytest
         run: |
           poetry run coverage run -m pytest tests/
+          mkdir -p reports
           poetry run coverage lcov -o reports/lcov.info
       - name: Upload coverage to Qlty
-        uses: qltysh/qlty-action/coverage@v2
+        uses: qltysh/qlty-action/coverage@a19242102d17e497f437d7466aa01b528537e899 # v2
         with:
           token: ${{ secrets.QLTY_COVERAGE_TOKEN }}
           files: reports/lcov.info
