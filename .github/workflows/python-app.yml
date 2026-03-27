@@ -43,9 +43,3 @@ jobs:
       - name: Test with pytest
         run: |
           poetry run coverage run -m pytest tests/
-      - name: Code Climate | Coverage
-        uses: paambaati/codeclimate-action@v5.0.0
-        with:
-          coverageCommand: poetry run coverage xml
-        env:
-          CC_TEST_REPORTER_ID: ${{secrets.CC_TEST_REPORTER_ID}}
