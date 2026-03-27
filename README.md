@@ -126,22 +126,28 @@ The main customization options are:
 
 This project uses `pytest` and `pytest-cov` to run tests and measure test coverage.
 
-Follow these steps to run the tests with coverage:
+### Unit tests
 
-1. Navigate to the project root directory.
-2. Run the following command to execute the tests with coverage:
+Run the unit tests (no API keys required):
 
-   ```bash
-   pytest --cov=ossai tests/
-   ```
+```bash
+pytest --cov=ossai tests/ -m "not integration"
+```
 
-   This command will run all the tests in the `tests/` directory and generate a coverage report for the `ossai`
-   module.
+### Integration tests
 
-3. After running the tests, you will see a report in your terminal that shows the percentage of code covered by tests
-   and highlights any lines that are not covered.
+Integration tests make real OpenAI API calls to verify the end-to-end summarization flow works with the current
+dependency versions. They require `OPENAI_API_KEY` to be set in your environment or `.env` file.
 
-Please note that if you're using a virtual environment, make sure it's activated before running these commands.
+```bash
+pytest tests/ -m integration
+```
+
+The integration test uses an unambiguous conversation about migrating from MongoDB to PostgreSQL and asserts that the
+key topics (`mongodb`, `postgresql`, `migrat*`) appear in the summary. This is intentional: it lets us catch any
+SDK version bump that silently breaks the actual API integration even when unit tests pass.
+
+Both suites run automatically in CI as part of the same test step.
 
 ## Future Enhancements
 
