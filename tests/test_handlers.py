@@ -3,7 +3,7 @@ import uuid
 import pytest
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date
 from ossai.slack_context import SlackContext
 
 from ossai.handlers import (
@@ -14,6 +14,7 @@ from ossai.handlers import (
     handler_feedback,
     handler_action_summarize_since_date,
     handler_tldr_since_slash_command,
+    _custom_prompt_cache,
 )
 
 
@@ -625,3 +626,101 @@ async def test_handler_sandbox_slash_command_happy_path(mock_slack_context):
     await handler_sandbox_slash_command(mock_slack_context, ack, payload, say, user_id="foo123")
     ack.assert_called_once()
     mock_slack_context.client.chat_postEphemeral.assert_called_once()
+
+
+@pytest.mark.asyncio
+@patch("ossai.handlers.get_since_timeframe_presets")
+async def test_handler_tldr_since_slash_command_stores_custom_prompt(
+    get_since_timeframe_presets_mock,
+    mock_slack_context,
+):
+    """Custom prompt text in the payload is stored in the cache keyed by message_ts + user_id."""
+    say = AsyncMock()
+    ack = AsyncMock()
+    payload = {
+        "user_id": "U123",
+        "channel_id": "C123",
+        "channel_name": "general",
+        "text": "my custom prompt",
+    }
+    get_since_timeframe_presets_mock.return_value = {"foo": "bar"}
+    mock_slack_context.get_direct_message_channel_id.return_value = "DM123"
+    mock_slack_context.client.chat_postEphemeral.return_value = {"message_ts": "TS999"}
+
+    await handler_tldr_since_slash_command(mock_slack_context, ack, payload, say)
+
+    assert _custom_prompt_cache.get("TS999__U123") == "my custom prompt"
+
+
+@pytest.mark.asyncio
+@patch("ossai.handlers.Summarizer")
+@patch("ossai.handlers.get_text_and_blocks_for_say")
+@patch("aiohttp.ClientSession.post", new_callable=AsyncMock)
+async def test_handler_action_summarize_since_date_with_selected_date(
+    mock_post,
+    get_text_and_blocks_for_say_mock,
+    summarizer_mock,
+    mock_slack_context,
+):
+    """The datepicker (summarize_since) path parses selected_date and uses it as the since filter."""
+    ack = AsyncMock()
+    body = {
+        "channel": {"name": "general", "id": "C123"},
+        "user": {"id": "U123"},
+        "actions": [{"action_id": "summarize_since", "selected_date": "2024-01-15"}],
+        "response_url": "http://example.com/response",
+    }
+    mock_slack_context.get_direct_message_channel_id.return_value = "DM123"
+    mock_slack_context.get_channel_history.return_value = []
+    mock_slack_context.get_user_context.return_value = {}
+    summarizer_mock.return_value.summarize_slack_messages.return_value = ("summary", "run_id")
+    get_text_and_blocks_for_say_mock.return_value = ("text", "blocks")
+
+    await handler_action_summarize_since_date(mock_slack_context, ack, body)
+
+    mock_slack_context.get_channel_history.assert_called_once_with(
+        "C123", since=date(2024, 1, 15)
+    )
+    # No container in body, so custom_prompt should be None
+    _, kwargs = summarizer_mock.call_args
+    assert kwargs.get("custom_prompt") is None
+
+
+@pytest.mark.asyncio
+@patch("ossai.handlers.Summarizer")
+@patch("ossai.handlers.get_text_and_blocks_for_say")
+@patch("aiohttp.ClientSession.post", new_callable=AsyncMock)
+async def test_handler_action_summarize_since_date_custom_prompt_cache_hit(
+    mock_post,
+    get_text_and_blocks_for_say_mock,
+    summarizer_mock,
+    mock_slack_context,
+):
+    """When container.message_ts matches a cache entry, the custom prompt flows into Summarizer."""
+    _custom_prompt_cache["TS42__U123"] = "summarize in haiku"
+    try:
+        ack = AsyncMock()
+        body = {
+            "channel": {"name": "general", "id": "C123"},
+            "user": {"id": "U123"},
+            "actions": [
+                {
+                    "action_id": "summarize_since_preset",
+                    "selected_option": {"value": "1676955600"},
+                }
+            ],
+            "response_url": "http://example.com/response",
+            "container": {"message_ts": "TS42"},
+        }
+        mock_slack_context.get_direct_message_channel_id.return_value = "DM123"
+        mock_slack_context.get_channel_history.return_value = []
+        mock_slack_context.get_user_context.return_value = {}
+        summarizer_mock.return_value.summarize_slack_messages.return_value = ("summary", "run_id")
+        get_text_and_blocks_for_say_mock.return_value = ("text", "blocks")
+
+        await handler_action_summarize_since_date(mock_slack_context, ack, body)
+
+        _, kwargs = summarizer_mock.call_args
+        assert kwargs.get("custom_prompt") == "summarize in haiku"
+    finally:
+        _custom_prompt_cache.pop("TS42__U123", None)

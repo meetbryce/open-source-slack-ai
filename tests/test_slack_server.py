@@ -47,6 +47,22 @@ def test_pulse(mock_app, mock_os_environ):
 
 
 @pytest.mark.asyncio
+async def test_slack_events_url_verification():
+    """The url_verification challenge-response must return the challenge token unchanged."""
+    from unittest.mock import MagicMock
+    from ossai.slack_server import slack_events
+
+    mock_request = MagicMock()
+    mock_request.json = AsyncMock(
+        return_value={"type": "url_verification", "challenge": "test_challenge_token"}
+    )
+
+    result = await slack_events(mock_request)
+
+    assert result == {"challenge": "test_challenge_token"}
+
+
+@pytest.mark.asyncio
 @patch("ossai.slack_server.client")
 @patch("ossai.slack_server.handler_sandbox_slash_command")
 async def test_handle_slash_command_sandbox(

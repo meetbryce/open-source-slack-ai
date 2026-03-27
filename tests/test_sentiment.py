@@ -1,5 +1,6 @@
 import pytest
-from ossai.sentiment import get_traditional_sentiment
+from unittest.mock import patch, MagicMock
+from ossai.sentiment import get_traditional_sentiment, _get_analyzer
 
 
 class TestSentiment:
@@ -61,15 +62,39 @@ class TestSentiment:
         """Test that all scores are within expected ranges"""
         text = "This is a test message with some sentiment."
         result = get_traditional_sentiment(text)
-        
+
         # Individual scores should be between 0 and 1
         assert 0.0 <= result['neg'] <= 1.0
         assert 0.0 <= result['neu'] <= 1.0
         assert 0.0 <= result['pos'] <= 1.0
-        
+
         # Compound score should be between -1 and 1
         assert -1.0 <= result['compound'] <= 1.0
-        
+
         # Individual scores should sum to approximately 1
         score_sum = result['neg'] + result['neu'] + result['pos']
-        assert abs(score_sum - 1.0) < 0.001  # Allow for small floating point errors 
+        assert abs(score_sum - 1.0) < 0.001  # Allow for small floating point errors
+
+    @patch("ossai.sentiment.nltk.download")
+    @patch("ossai.sentiment.SentimentIntensityAnalyzer")
+    def test_get_analyzer_downloads_vader_on_lookup_error(self, mock_sia_class, mock_download, monkeypatch):
+        """The LookupError path triggers an nltk download and retries initialization."""
+        monkeypatch.setattr("ossai.sentiment._sia", None)
+        successful_analyzer = MagicMock()
+        mock_sia_class.side_effect = [LookupError("resource not found"), successful_analyzer]
+
+        result = _get_analyzer()
+
+        mock_download.assert_called_once_with("vader_lexicon", quiet=True)
+        assert result is successful_analyzer
+
+    @patch("ossai.sentiment._get_analyzer")
+    def test_get_traditional_sentiment_exception_returns_neutral(self, mock_get_analyzer):
+        """When polarity_scores raises, neutral scores are returned as fallback."""
+        mock_analyzer = MagicMock()
+        mock_analyzer.polarity_scores.side_effect = RuntimeError("unexpected failure")
+        mock_get_analyzer.return_value = mock_analyzer
+
+        result = get_traditional_sentiment("some valid text")
+
+        assert result == {'neg': 0.0, 'neu': 1.0, 'pos': 0.0, 'compound': 0.0}

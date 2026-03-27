@@ -169,3 +169,76 @@ def test_get_workspace_name_failure(slack_context):
         result = slack_context.get_workspace_name()
         slack_context.client.team_info.assert_called_once()
         assert result == ""
+
+
+def test_get_name_from_id_cache_hit(slack_context):
+    """Cache hit should return stored value without calling the Slack API."""
+    slack_context._id_name_cache["U123"] = ("Cached Name", False)
+    result = slack_context.get_name_from_id("U123")
+    assert result == ("Cached Name", False)
+    slack_context.client.users_info.assert_not_called()
+
+
+def test_get_parsed_messages_with_internal_external(slack_context):
+    """with_internal_external=True prefixes messages with [internal] or [external]."""
+    def users_info_side_effect(user):
+        data = {
+            "U123": {"ok": True, "user": {"real_name": "Ashley Wang", "name": "ashley.wang", "profile": {"real_name": "Ashley Wang", "title": "CEO"}, "is_restricted": False}},
+            "U456": {"ok": True, "user": {"real_name": "Taylor Garcia", "name": "taylor.garcia", "profile": {"real_name": "Taylor Garcia", "title": "CTO"}, "is_restricted": True}},
+        }
+        return data.get(user, {"ok": False})
+
+    slack_context.client.users_info.side_effect = users_info_side_effect
+    messages = [
+        {"text": "Hello", "user": "U123"},
+        {"text": "Hi there", "user": "U456"},
+    ]
+    result = slack_context.get_parsed_messages(messages, with_internal_external=True)
+    assert result[0].startswith("Ashley Wang [internal]:")
+    assert result[1].startswith("Taylor Garcia [external]:")
+
+
+@pytest.mark.asyncio
+async def test_get_user_context_success(slack_context):
+    """Happy path returns name and title from the Slack user profile."""
+    result = await slack_context.get_user_context("U123")
+    assert result == {"name": "ashley.wang", "title": "CEO"}
+
+
+@pytest.mark.asyncio
+async def test_get_user_context_slack_api_error_returns_empty_dict(slack_context):
+    """SlackApiError during user lookup returns {} instead of propagating the exception."""
+    slack_context.client.users_info.side_effect = SlackApiError(
+        "error", {"error": "user_not_found", "headers": {}}
+    )
+    result = await slack_context.get_user_context("U999")
+    assert result == {}
+
+
+def test_get_rich_parsed_messages_include_threads(slack_context):
+    """include_threads=True fetches replies and attaches them as reply_messages."""
+    slack_context.client.conversations_replies.return_value = {
+        "ok": True,
+        "messages": [
+            {"text": "parent", "ts": "1000.0", "user": "U123", "thread_ts": "1000.0"},
+            {"text": "reply", "ts": "1001.0", "user": "U456"},
+        ],
+    }
+    messages = [{"text": "parent", "ts": "1000.0", "user": "U123", "thread_ts": "1000.0"}]
+    result = slack_context.get_rich_parsed_messages(messages, channel_id="C123", include_threads=True)
+    assert len(result) == 1
+    assert "reply_messages" in result[0]
+    assert len(result[0]["reply_messages"]) == 1
+    assert result[0]["author"] == "Ashley Wang"
+    assert all(k in result[0]["trad_sentiment"] for k in ("neg", "neu", "pos", "compound"))
+
+
+def test_get_rich_parsed_messages_thread_slack_api_error(slack_context):
+    """SlackApiError fetching thread replies still returns the parent message."""
+    slack_context.client.conversations_replies.side_effect = SlackApiError(
+        "error", {"error": "channel_not_found", "headers": {}}
+    )
+    messages = [{"text": "hi", "ts": "1000.0", "user": "U123", "thread_ts": "1000.0"}]
+    result = slack_context.get_rich_parsed_messages(messages, channel_id="C123", include_threads=True)
+    assert len(result) == 1
+    assert "reply_messages" not in result[0]

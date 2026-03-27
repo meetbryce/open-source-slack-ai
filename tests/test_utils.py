@@ -5,6 +5,7 @@ import uuid
 import pytest
 
 from ossai import utils
+from ossai.utils.langsmith import CustomLangChainTracer, get_langsmith_config
 
 
 @pytest.fixture
@@ -123,6 +124,49 @@ def test_get_since_timeframe_presets_values(mock_gmtime):
         assert (
             expected_value == actual["value"]
         ), f"'{expected_text}': Expected value {expected_value}, got {actual['value']}"
+
+
+def test_get_langsmith_config_is_private_true():
+    """is_private=True is reflected in metadata and on the tracer instance."""
+    config = get_langsmith_config("feature", {"name": "alice", "title": "eng"}, "C123", is_private=True)
+    assert config["metadata"]["is_private"] is True
+    assert config["callbacks"][0].is_private is True
+
+
+def test_get_langsmith_config_user_without_name():
+    """user dict missing 'name' key means user_name is absent from metadata."""
+    config = get_langsmith_config("feature", {"title": "eng"}, "C123")
+    assert "user_name" not in config["metadata"]
+    assert config["metadata"]["user_title"] == "eng"
+
+
+def test_get_langsmith_config_user_without_title():
+    """user dict missing 'title' key means user_title is absent from metadata."""
+    config = get_langsmith_config("feature", {"name": "alice"}, "C123")
+    assert "user_title" not in config["metadata"]
+    assert config["metadata"]["user_name"] == "alice"
+
+
+def test_get_langsmith_config_empty_user_dict():
+    """Empty user dict (returned by get_user_context on SlackApiError) must not KeyError."""
+    config = get_langsmith_config("feature", {}, "C123")
+    assert config["metadata"] == {"is_private": False, "channel": "C123"}
+
+
+@patch("langchain_core.tracers.langchain.LangChainTracer.handleText", create=True)
+def test_custom_langchain_tracer_handle_text_not_private(mock_parent_handle):
+    """is_private=False passes the original text through to the parent tracer."""
+    tracer = CustomLangChainTracer(is_private=False)
+    tracer.handleText("real text", "run-123")
+    mock_parent_handle.assert_called_once_with("real text", "run-123")
+
+
+@patch("langchain_core.tracers.langchain.LangChainTracer.handleText", create=True)
+def test_custom_langchain_tracer_handle_text_is_private(mock_parent_handle):
+    """is_private=True replaces the text with an empty string to avoid logging private content."""
+    tracer = CustomLangChainTracer(is_private=True)
+    tracer.handleText("secret content", "run-123")
+    mock_parent_handle.assert_called_once_with("", "run-123")
 
 
 def test_get_text_and_blocks_for_say_block_size():
