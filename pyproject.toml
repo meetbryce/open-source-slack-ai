@@ -13,7 +13,7 @@ slack-sdk = "^3.21.3"
 slack-bolt = "^1.18.0"
 fastapi = ">=0.111,<0.137"
 uvicorn = {extras = ["standard"], version = ">=0.23.2,<0.48.0"}
-python-multipart = ">=0.0.9,<0.0.29"
+python-multipart = ">=0.0.9,<0.0.32"
 openai = ">=1.33,<3.0"
 scikit-learn = "^1.3.0"
 spacy = "^3.6.1"
