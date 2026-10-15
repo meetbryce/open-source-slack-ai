@@ -30,7 +30,7 @@ jobs:
         with:
           python-version: "3.11"
       - name: Poetry Install
-        uses: knowsuchagency/poetry-install@v2
+        uses: knowsuchagency/poetry-install@v3
         env:
           POETRY_VIRTUALENVS_CREATE: false
       - name: Download Spacy Model
