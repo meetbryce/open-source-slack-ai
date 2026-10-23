@@ -1,20 +1,45 @@
 name: Python package
-permissions:
-  contents: read
 on:
   push:
     tags:
       - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to release, e.g. v0.7.3"
+        required: true
+        type: string
+permissions:
+  contents: write # needed to create the GitHub release
 jobs:
-  build:
+  release:
     runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag || github.ref_name }}
       - name: Set up Python
         uses: actions/setup-python@v7
         with:
           python-version: "3.11"
-      - name: Build and publish to pypi
-        uses: JRubics/poetry-publish@v2.1
-        with:
-          pypi_token: ${{ secrets.PYPI_TOKEN }}
+      - name: Install Poetry
+        run: pipx install poetry
+      - name: Check tag matches pyproject version
+        run: |
+          pkg_version="$(poetry version --short)"
+          if [ "v${pkg_version}" != "${RELEASE_TAG}" ]; then
+            echo "Tag ${RELEASE_TAG} does not match pyproject version ${pkg_version}" >&2
+            exit 1
+          fi
+      - name: Build
+        run: poetry build
+      - name: Publish to PyPI
+        env:
+          POETRY_PYPI_TOKEN_PYPI: ${{ secrets.PYPI_TOKEN }}
+        run: poetry publish
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${RELEASE_TAG}" dist/* --verify-tag --generate-notes
