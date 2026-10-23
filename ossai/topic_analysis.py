@@ -35,7 +35,7 @@ except:
     nlp = spacy.load("en_core_web_md")
 config = get_llm_config()
 TEMPERATURE = (
-    float(config["temperature"]) + 0.1
+    float(config["temperature"]) + 0.1 if config["temperature"] is not None else None
 )  # a little more creativity is beneficial here
 DEBUG = bool(os.environ.get("DEBUG", False))
 

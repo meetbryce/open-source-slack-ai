@@ -14,13 +14,13 @@ about [how and why I built an open-source Slack AI](https://bryceyork.com/free-o
 Once up and running (instructions for the whole process are provided below), all your Slack users will be able to
 generate to both public and private:
 
-1. **Thread summaries** - Generate a detailed summary of any Slack thread (powered by GPT-4.1 by default)
+1. **Thread summaries** - Generate a detailed summary of any Slack thread (powered by GPT-6 Luna by default)
 2. **Channel overviews** - Generate an outline of the channel's purpose based on the extended message history (powered
-   by an ensemble of NLP models and a little GPT-4.1 to explain the analysis in natural language)
+   by an ensemble of NLP models and a little GPT-6 Luna to explain the analysis in natural language)
 3. **Channel summaries since** - Generate a detailed summary of a channel's messages since a given point in time (powered by
-   GPT-4.1 by default). Now with support for custom prompts! e.g. `/tldr_since anonymize the summary`. Note: this doesn't include threads yet.
+   GPT-6 Luna by default). Now with support for custom prompts! e.g. `/tldr_since anonymize the summary`. Note: this doesn't include threads yet.
 4. **Full channel summaries** (experimental) - Generate a detailed summary of a channel's extended history (powered by
-   GPT-4.1 by default). Now with support for custom prompts! e.g. `/tldr_extended anonymize the summary`. Note: this can get very long!
+   GPT-6 Luna by default). Now with support for custom prompts! e.g. `/tldr_extended anonymize the summary`. Note: this can get very long!
 
 _Note: these features were all working well even on GPT-3.5-Turbo (and GPT-4 for channel overviews)_
 
